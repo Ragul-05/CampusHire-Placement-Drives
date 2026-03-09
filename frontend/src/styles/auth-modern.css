@@ -1,0 +1,134 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: #111827;
+  background-color: #f3f4f6;
+  line-height: 1.6;
+  font-weight: 400;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #f3f4f6;
+  color: #111827;
+}
+
+a { color: inherit; text-decoration: none; }
+
+.login-shell { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 32px; }
+
+.login-card {
+  width: min(1080px, 100%);
+  background: #ffffff;
+  border-radius: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(17, 24, 39, 0.18);
+  border: 1px solid rgba(17, 24, 39, 0.06);
+}
+
+.login-card.single { grid-template-columns: 1fr; max-width: 560px; }
+
+.login-brand {
+  position: relative;
+  padding: 48px 44px;
+  background: radial-gradient(circle at 30% 30%, rgba(13, 148, 136, 0.12), transparent 40%),
+    radial-gradient(circle at 80% 20%, rgba(30, 58, 138, 0.18), transparent 35%),
+    linear-gradient(135deg, #1e3a8a 0%, #0d9488 100%);
+  color: #e5e7eb;
+}
+
+.brand-badge { display: inline-flex; align-items: center; justify-content: center; width: 54px; height: 54px; border-radius: 14px; background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.18); font-weight: 700; letter-spacing: 0.5px; margin-bottom: 18px; }
+
+.login-brand h1 { margin: 0 0 10px; font-size: 26px; color: #ffffff; }
+.login-brand p { margin: 0 0 28px; color: rgba(229, 231, 235, 0.9); }
+
+.brand-illustration { position: relative; height: 220px; }
+.orb { position: absolute; border-radius: 50%; filter: blur(0.5px); opacity: 0.6; }
+.orb-1 { width: 120px; height: 120px; background: #38bdf8; top: 10px; left: 24px; }
+.orb-2 { width: 160px; height: 160px; background: #0ea5e9; bottom: 8px; right: 20px; }
+.orb-3 { width: 80px; height: 80px; background: #0d9488; bottom: 30px; left: 80px; }
+.device { position: absolute; border-radius: 12px; background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18); }
+.device.laptop { width: 160px; height: 90px; top: 60px; left: 40px; }
+.device.vehicle { width: 120px; height: 70px; bottom: 40px; right: 70px; }
+.device.gear { width: 70px; height: 70px; top: 30px; right: 40px; border-radius: 50%; }
+
+.login-form { padding: 48px 44px; background: #ffffff; display: flex; flex-direction: column; gap: 20px; }
+.auth-header h2 { margin: 0 0 6px; font-size: 24px; color: #111827; }
+.auth-header p { margin: 0; color: #6b7280; }
+
+.auth-form { display: flex; flex-direction: column; gap: 14px; }
+.auth-form label { display: flex; flex-direction: column; gap: 8px; color: #111827; font-weight: 600; font-size: 14px; }
+.auth-form input, .auth-form select { padding: 12px 14px; border-radius: 10px; border: 1px solid #e5e7eb; background: #f9fafb; color: #111827; font-size: 15px; transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease; }
+.auth-form input:focus, .auth-form select:focus { outline: none; border-color: #1e3a8a; box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.16); background: #ffffff; }
+
+.auth-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.two-col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.checkbox { display: flex; align-items: center; gap: 8px; color: #111827; font-weight: 500; }
+.checkbox input { width: 16px; height: 16px; accent-color: #1e3a8a; }
+
+.auth-error { background: #fef2f2; color: #b91c1c; border-radius: 10px; padding: 10px 12px; font-size: 14px; border: 1px solid #fecaca; }
+
+.primary-btn { margin-top: 6px; padding: 13px 14px; border: none; border-radius: 12px; background: linear-gradient(135deg, #1e3a8a, #0d9488); color: #ffffff; font-weight: 700; font-size: 15px; cursor: pointer; transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s ease; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.primary-btn.teal { background: linear-gradient(135deg, #0d9488, #14b8a6); }
+.primary-btn:hover { transform: translateY(-1px); box-shadow: 0 12px 30px rgba(17, 24, 39, 0.18); }
+.primary-btn:active { transform: translateY(0); }
+.primary-btn:disabled { opacity: 0.7; cursor: not-allowed; box-shadow: none; }
+
+.spinner { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.3); border-top-color: #ffffff; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.auth-footer { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #6b7280; }
+
+.pw-strength { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #6b7280; }
+.pw-strength .bar { flex: 1; height: 8px; border-radius: 999px; background: #e5e7eb; position: relative; overflow: hidden; }
+.pw-strength .bar::after { content: ''; position: absolute; top: 0; left: 0; height: 100%; width: 0%; background: linear-gradient(90deg, #ef4444, #f59e0b, #10b981); transition: width 0.3s ease; }
+.pw-strength .bar.score-0::after { width: 10%; }
+.pw-strength .bar.score-1::after { width: 25%; }
+.pw-strength .bar.score-2::after { width: 50%; }
+.pw-strength .bar.score-3::after { width: 75%; }
+.pw-strength .bar.score-4::after { width: 100%; }
+
+.link-muted { color: #6b7280; font-weight: 500; transition: color 0.2s ease; }
+.link-muted:hover { color: #111827; }
+.link-primary { color: #1e3a8a; font-weight: 700; transition: color 0.2s ease; }
+.link-primary:hover { color: #0d9488; }
+
+/* Role toggle for admin/faculty login */
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 6px 0 4px;
+}
+.segmented button {
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #111827;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.segmented button.active {
+  background: linear-gradient(135deg, #1e3a8a, #0d9488);
+  color: #ffffff;
+  border-color: #1e3a8a;
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.12);
+}
+.segmented button:not(.active):hover { border-color: #cbd5e1; background: #fff; }
+
+@media (max-width: 960px) {
+  .login-card { grid-template-columns: 1fr; }
+  .login-brand { min-height: 260px; }
+  .two-col { grid-template-columns: 1fr; }
+}

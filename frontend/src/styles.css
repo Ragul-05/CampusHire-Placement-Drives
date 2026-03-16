@@ -8,7 +8,9 @@
 
 * { box-sizing: border-box; }
 
-body { margin: 0; background: #f8fafc; }
+html, body { margin: 0; height: 100%; background: #f8fafc; }
+
+#root { height: 100%; }
 
 .page { min-height: 100vh; color: #0f172a; }
 

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import StudentLayout from '../components/StudentLayout';
-import { getJson, putJson } from '../utils/api';
+import { getJson, postJson, putJson } from '../utils/api';
 
 /* ─────────────────────────────────────────────
    TYPES  (mirror the expanded DTO)
@@ -44,12 +44,13 @@ interface ProfileDto {
   id: number; rollNo: string; batch: string;
   registerNumber: string; email: string; departmentName: string;
   resumeUrl: string; resumeFileName: string; resumeUploadedAt?: string; resumeSummary: string;
-  verificationStatus: string; isLocked: boolean; isEligibleForPlacements: boolean;
+  verificationStatus: string; submittedForVerification?: boolean; isLocked: boolean; isEligibleForPlacements: boolean;
   interestedOnPlacement: boolean; isPlaced: boolean; numberOfOffers: number; highestPackageLpa: number;
   personalDetails: PersonalDetailsDto; contactDetails: ContactDetailsDto;
   academicRecord: AcademicRecordDto; schoolingDetails: SchoolingDetailsDto;
   professionalProfile: ProfessionalProfileDto; certifications: CertificationDto[];
   skills: SkillDto[]; identityDocs: IdentityDocsDto; resume: ResumeDto;
+  profileCompletion?: number;
 }
 
 /* ─────────────────────────────────────────────
@@ -168,6 +169,7 @@ export default function StudentProfile() {
   const [loading,  setLoading]  = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>('personal');
   const [saving,   setSaving]   = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [toast,    setToast]    = useState<{ msg: string; type: 'success'|'error' } | null>(null);
   const [errors,   setErrors]   = useState<Record<string, string>>({});
 
@@ -230,25 +232,41 @@ export default function StudentProfile() {
     } finally { setSaving(false); }
   }
 
-  const completion = calcCompletion(profile);
+  async function handleSubmitForVerification() {
+    if (isReadonly) return;
+    setSubmitting(true);
+    try {
+      await postJson(`/api/student/profile/submit?email=${encodeURIComponent(email)}`, {});
+      setToast({ msg: 'Profile submitted to faculty for verification!', type: 'success' });
+      await loadProfile();
+    } catch (e: any) {
+      setToast({ msg: e?.message || 'Submission failed', type: 'error' });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const completion = Math.round(profile?.profileCompletion ?? calcCompletion(profile));
   const verStatus  = profile?.verificationStatus || 'PENDING';
+  const isSubmitted = !!profile?.submittedForVerification;
+  const canSubmitForVerification = !isReadonly && !isLocked && completion >= 80 && !isSubmitted;
 
   /* ── Status banner config ── */
   const statusCfg: Record<string, { bg: string; border: string; color: string; icon: string; text: string }> = {
     VERIFIED:  { bg:'#f0fdf4', border:'#86efac', color:'#15803d', icon:'✅', text:'Your profile has been verified. Editing is disabled.' },
-    PENDING:   { bg:'#fffbeb', border:'#fde68a', color:'#92400e', icon:'⏳', text:'Awaiting faculty verification. You can still edit your profile.' },
+    PENDING:   { bg:'#fffbeb', border:'#fde68a', color:'#92400e', icon:'⏳', text: isSubmitted ? 'Awaiting faculty verification. Your submitted profile is now in the faculty queue.' : 'Your profile is still a draft. Submit it to faculty once completion reaches at least 80%.' },
     REJECTED:  { bg:'#fef2f2', border:'#fca5a5', color:'#991b1b', icon:'❌', text:'Your profile was rejected. Please update and resubmit.' },
   };
   const cfg = statusCfg[verStatus] || statusCfg['PENDING'];
 
   if (loading) return (
-    <StudentLayout activeNav="profile">
+    <StudentLayout>
       <div className="sp-loading"><div className="sp-spinner" /><p>Loading your profile…</p></div>
     </StudentLayout>
   );
 
   return (
-    <StudentLayout activeNav="profile">
+    <StudentLayout>
       <div className="sp-page">
 
         {/* ── LOCK BANNER (Module 10) — shown only when isLocked ── */}
@@ -361,7 +379,11 @@ export default function StudentProfile() {
             }} />
           </div>
           <div className="sp-completion-hint">
-            {completion < 100 ? `Fill in all sections to reach 100% — improves your placement visibility.` : `🎉 Your profile is complete!`}
+            {completion < 80
+              ? 'Complete at least 80% of your profile before submitting it to faculty.'
+              : completion < 100
+                ? 'You can now submit this profile to faculty, or keep filling more sections to reach 100%.'
+                : 'Your profile is complete and ready for faculty review.'}
           </div>
         </div>
 
@@ -385,6 +407,27 @@ export default function StudentProfile() {
                 {TABS.find(t => t.id === activeTab)?.icon}{' '}
                 {TABS.find(t => t.id === activeTab)?.label}
               </h2>
+              {!isLocked && !isReadonly && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <button
+                    className="sp-save-btn"
+                    onClick={handleSubmitForVerification}
+                    disabled={!canSubmitForVerification || submitting || saving}
+                    style={{
+                      background: canSubmitForVerification ? 'linear-gradient(135deg,#2563eb,#1d4ed8)' : '#cbd5e1',
+                      boxShadow: canSubmitForVerification ? '0 10px 24px rgba(37,99,235,0.18)' : 'none'
+                    }}
+                    title={completion < 80 ? 'Complete at least 80% of your profile before submitting' : isSubmitted ? 'Already submitted to faculty' : 'Submit profile to faculty'}
+                  >
+                    {submitting ? 'Submitting…' : isSubmitted ? 'Submitted to Faculty' : 'Submit to Faculty'}
+                  </button>
+                  {!isSubmitted && completion < 80 && (
+                    <span style={{ fontSize: 12, color: '#b45309', fontWeight: 700 }}>
+                      Reach 80% completion to submit
+                    </span>
+                  )}
+                </div>
+              )}
               {isLocked && (
                 <span
                   title="Your profile is locked by the placement office. Contact your faculty to unlock."

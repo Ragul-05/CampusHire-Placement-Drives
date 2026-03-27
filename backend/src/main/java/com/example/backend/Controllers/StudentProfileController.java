@@ -29,6 +29,12 @@ public class StudentProfileController {
                 studentProfileService.getVerificationStatus(email)));
     }
 
+    @PostMapping("/submit")
+    public ResponseEntity<ApiResponse<Void>> submitProfileForVerification(@RequestParam String email) {
+        studentProfileService.submitProfileForVerification(email);
+        return ResponseEntity.ok(ApiResponse.success("Profile submitted to faculty for verification", null));
+    }
+
     @PutMapping("/personal")
     public ResponseEntity<ApiResponse<Void>> updatePersonalDetails(
             @RequestParam String email,

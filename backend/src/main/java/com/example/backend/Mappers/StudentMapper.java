@@ -20,6 +20,7 @@ public class StudentMapper {
                 .resumeUploadedAt(profile.getResumeUploadedAt())
                 .resumeSummary(profile.getResumeSummary())
                 .verificationStatus(profile.getVerificationStatus() != null ? profile.getVerificationStatus().name() : null)
+                .submittedForVerification(profile.getSubmittedForVerification())
                 .isLocked(profile.getIsLocked())
                 .isEligibleForPlacements(profile.getIsEligibleForPlacements())
                 .interestedOnPlacement(profile.getInterestedOnPlacement())

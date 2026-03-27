@@ -28,6 +28,7 @@ public class StudentProfileDto {
     private String resumeSummary;
 
     private String verificationStatus;
+    private Boolean submittedForVerification;
     private Boolean isLocked;
     private Boolean isEligibleForPlacements;
     private Boolean interestedOnPlacement;

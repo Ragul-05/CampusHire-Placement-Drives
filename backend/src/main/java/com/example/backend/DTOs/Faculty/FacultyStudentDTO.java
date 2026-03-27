@@ -27,9 +27,14 @@ public class FacultyStudentDTO {
 
     private Boolean facultyApproved;
     private String currentStage;
+    private Boolean hasApplied;
 
     private String department;
     private Integer graduationYear;
+    private Double profileCompletionPercentage;
+    private String phoneNumber;
+    private String linkedinUrl;
+    private String githubUrl;
 
     // Skills could be aggregated as a single string or list
     private List<String> skills;

@@ -22,7 +22,25 @@ export async function apiJson<T>(path: string, options: { method?: string; body?
     body: body ? JSON.stringify(body) : undefined
   });
 
-  const json = await res.json();
+  const text = await res.text();
+  if (!text.trim()) {
+    if (!res.ok) {
+      throw new Error(`Request failed with status ${res.status}`);
+    }
+    return {
+      success: true,
+      message: '',
+      data: undefined as T
+    };
+  }
+
+  let json: ApiResponse<T>;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error(`Received an invalid response from the server (${res.status})`);
+  }
+
   if (!res.ok || !json?.success) {
     const msg = json?.message || `Request failed with status ${res.status}`;
     throw new Error(msg);

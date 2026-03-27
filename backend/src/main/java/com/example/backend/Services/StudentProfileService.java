@@ -38,6 +38,21 @@ public class StudentProfileService {
         return profile.getVerificationStatus() != null ? profile.getVerificationStatus().name() : "PENDING";
     }
 
+    @Transactional
+    public void submitProfileForVerification(String email) {
+        StudentProfile profile = getEditableProfile(email);
+        double completion = calculateCompletionPercentage(profile);
+        if (completion < 80.0) {
+            throw new IllegalStateException("Complete at least 80% of your profile before submitting to faculty");
+        }
+
+        profile.setVerificationStatus(VerificationStatus.PENDING);
+        profile.setSubmittedForVerification(true);
+        profile.setIsEligibleForPlacements(false);
+        profile.setEligibleForAdminReview(false);
+        studentProfileRepository.save(profile);
+    }
+
     /* ── Helper: load profile WITH all sub-entities eagerly so null-checks work ── */
     private StudentProfile getEditableProfile(String email) {
         StudentProfile profile = studentProfileRepository.findFullProfileByUserEmail(email)
@@ -317,9 +332,10 @@ public class StudentProfileService {
     }
 
     private void markProfileDirty(StudentProfile profile) {
-        // Reset verification when student edits their profile; admin/faculty will re-verify
+        // Keep edits as draft until the student explicitly resubmits to faculty.
         if (profile.getVerificationStatus() != VerificationStatus.VERIFIED) {
             profile.setVerificationStatus(VerificationStatus.PENDING);
+            profile.setSubmittedForVerification(false);
         }
         profile.setIsEligibleForPlacements(false);
         profile.setEligibleForAdminReview(false);

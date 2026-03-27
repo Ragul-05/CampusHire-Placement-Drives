@@ -33,8 +33,10 @@ public class AdminShortlistService {
             throw new ResourceNotFoundException("Placement Drive not found");
         }
 
-        List<DriveApplication> applications = driveApplicationRepository.findByDriveIdAndStage(driveId,
-                ApplicationStage.APPLIED);
+        List<DriveApplication> applications = driveApplicationRepository.findByDriveId(driveId).stream()
+                .filter(app -> Boolean.TRUE.equals(app.getFacultyApproved()))
+                .filter(app -> app.getStage() != ApplicationStage.REJECTED)
+                .collect(Collectors.toList());
         return applications.stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
@@ -62,10 +64,21 @@ public class AdminShortlistService {
     }
 
     private DriveApplicationDTO mapToDTO(DriveApplication app) {
+        String studentName = app.getStudentProfile().getUser().getEmail();
+        if (app.getStudentProfile().getPersonalDetails() != null
+                && app.getStudentProfile().getPersonalDetails().getFirstName() != null
+                && !app.getStudentProfile().getPersonalDetails().getFirstName().isBlank()) {
+            String firstName = app.getStudentProfile().getPersonalDetails().getFirstName().trim();
+            String lastName = app.getStudentProfile().getPersonalDetails().getLastName() != null
+                    ? app.getStudentProfile().getPersonalDetails().getLastName().trim()
+                    : "";
+            studentName = (firstName + " " + lastName).trim();
+        }
+
         return DriveApplicationDTO.builder()
                 .id(app.getId())
                 .studentId(app.getStudentProfile().getId())
-                .studentName(app.getStudentProfile().getUser().getEmail()) // Mocking name with email
+                .studentName(studentName)
                 .rollNo(app.getStudentProfile().getRollNo())
                 .departmentName(app.getStudentProfile().getUser().getDepartment() != null
                         ? app.getStudentProfile().getUser().getDepartment().getName()

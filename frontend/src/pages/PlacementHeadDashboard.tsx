@@ -210,6 +210,7 @@ export default function PlacementHeadDashboard({ onNavigate }: { onNavigate?: (v
             <div className={`card table-card fade-in ${sk}`}>
               {!loading && <>
                 <div className="table-header">Upcoming Drive Deadlines</div>
+                <div className="table-wrapper">
                 <table className="table">
                   <thead><tr><th>Drive</th><th>Role</th><th>Status</th><th>CTC</th></tr></thead>
                   <tbody>
@@ -219,6 +220,7 @@ export default function PlacementHeadDashboard({ onNavigate }: { onNavigate?: (v
                     ))}
                   </tbody>
                 </table>
+                </div>
                 <div className="pagination">{upcomingDrives.length} items</div>
               </>}
             </div>
@@ -226,6 +228,7 @@ export default function PlacementHeadDashboard({ onNavigate }: { onNavigate?: (v
             <div className={`card table-card fade-in ${sk}`}>
               {!loading && <>
                 <div className="table-header">High Offer Drives</div>
+                <div className="table-wrapper">
                 <table className="table">
                   <thead><tr><th>Company</th><th>CTC</th><th>Role</th><th>Status</th></tr></thead>
                   <tbody>
@@ -235,6 +238,7 @@ export default function PlacementHeadDashboard({ onNavigate }: { onNavigate?: (v
                     ))}
                   </tbody>
                 </table>
+                </div>
                 <div className="pagination">{highOfferDrives.length} items</div>
               </>}
             </div>

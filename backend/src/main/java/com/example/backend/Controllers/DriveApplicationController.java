@@ -22,6 +22,12 @@ public class DriveApplicationController {
         return ResponseEntity.ok(ApiResponse.success("Successfully applied for the drive", null));
     }
 
+    @PostMapping("/apply/{driveId}")
+    public ResponseEntity<ApiResponse<Void>> applyForDriveLegacy(@RequestParam String email, @PathVariable Long driveId) {
+        driveApplicationService.applyForDrive(email, driveId);
+        return ResponseEntity.ok(ApiResponse.success("Successfully applied for the drive", null));
+    }
+
     @GetMapping
     public ResponseEntity<ApiResponse<List<DriveApplicationDto>>> getMyApplications(@RequestParam String email) {
         return ResponseEntity

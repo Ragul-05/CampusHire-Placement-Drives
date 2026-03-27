@@ -3,7 +3,9 @@ package com.example.backend.Services;
 import com.example.backend.DTOs.PlacementDriveDto;
 import com.example.backend.Exceptions.ResourceNotFoundException;
 import com.example.backend.Mappers.PlacementMapper;
-import com.example.backend.Models.*;
+import com.example.backend.Models.DriveApplication;
+import com.example.backend.Models.PlacementDrive;
+import com.example.backend.Models.StudentProfile;
 import com.example.backend.Models.enums.DriveStatus;
 import com.example.backend.Repositories.DriveApplicationRepository;
 import com.example.backend.Repositories.PlacementDriveRepository;
@@ -20,9 +22,9 @@ import java.util.stream.Collectors;
 public class StudentDriveService {
 
     @Autowired private PlacementDriveRepository placementDriveRepository;
-    @Autowired private StudentProfileRepository  studentProfileRepository;
+    @Autowired private StudentProfileRepository studentProfileRepository;
     @Autowired private DriveApplicationRepository driveApplicationRepository;
-    @Autowired private StudentProfileService studentProfileService;
+    @Autowired private PlacementEligibilityService placementEligibilityService;
 
     @Transactional(readOnly = true)
     public List<PlacementDriveDto> getVisibleDrives(String email) {
@@ -32,105 +34,36 @@ public class StudentDriveService {
         List<PlacementDrive> drives = placementDriveRepository
                 .findByStatusIn(List.of(DriveStatus.ONGOING, DriveStatus.UPCOMING));
 
-        // Build a map of driveId → application for this student (one query)
         Map<Long, DriveApplication> appliedMap = driveApplicationRepository
                 .findByStudentProfileId(profile.getId())
                 .stream()
                 .collect(Collectors.toMap(a -> a.getDrive().getId(), a -> a, (a, b) -> a));
 
-        boolean isVerified = profile.getVerificationStatus() != null
-                && profile.getVerificationStatus().name().equals("VERIFIED");
-        boolean placementEligible = Boolean.TRUE.equals(profile.getIsEligibleForPlacements());
-
         return drives.stream().map(drive -> {
-            boolean isEligible = true;
-            String  ineligibilityReason = null;
+            PlacementEligibilityService.EligibilityEvaluation evaluation =
+                    placementEligibilityService.evaluate(profile, drive);
 
-            // If profile not verified — not eligible to apply
-            if (!isVerified) {
-                isEligible = false;
-                ineligibilityReason = "Your profile must be verified before you can apply.";
-            } else if (!placementEligible) {
-                isEligible = false;
-                ineligibilityReason = "Your profile is not yet marked eligible by faculty.";
-            } else {
-                EligibilityCriteria ec = drive.getEligibilityCriteria();
-                AcademicRecord   ar = profile.getAcademicRecord();
-                SchoolingDetails sd = profile.getSchoolingDetails();
+            DriveApplication application = appliedMap.get(drive.getId());
+            boolean hasApplied = application != null;
+            String applicationStage = hasApplied && application.getStage() != null
+                    ? application.getStage().name()
+                    : null;
 
-                if (ec != null) {
-                    if (ar == null) {
-                        isEligible = false;
-                        ineligibilityReason = "Academic record is incomplete.";
-                    } else if (ec.getMinCgpa() != null && (ar.getCgpa() == null || ar.getCgpa() < ec.getMinCgpa())) {
-                        isEligible = false;
-                        ineligibilityReason = "CGPA " + ar.getCgpa() + " < required " + ec.getMinCgpa();
-                    } else if (ec.getMaxStandingArrears() != null && ar.getStandingArrears() != null
-                            && ar.getStandingArrears() > ec.getMaxStandingArrears()) {
-                        isEligible = false;
-                        ineligibilityReason = "Standing arrears " + ar.getStandingArrears() + " > allowed " + ec.getMaxStandingArrears();
-                    } else if (ec.getMaxHistoryOfArrears() != null && ar.getHistoryOfArrears() != null
-                            && ar.getHistoryOfArrears() > ec.getMaxHistoryOfArrears()) {
-                        isEligible = false;
-                        ineligibilityReason = "History of arrears " + ar.getHistoryOfArrears() + " > allowed " + ec.getMaxHistoryOfArrears();
-                    } else if (sd != null && ec.getMinXMarks() != null
-                            && (sd.getXMarksPercentage() == null || sd.getXMarksPercentage() < ec.getMinXMarks())) {
-                        isEligible = false;
-                        ineligibilityReason = "10th marks " + sd.getXMarksPercentage() + "% < required " + ec.getMinXMarks() + "%";
-                    } else if (sd != null && ec.getMinXiiMarks() != null
-                            && (sd.getXiiMarksPercentage() == null || sd.getXiiMarksPercentage() < ec.getMinXiiMarks())) {
-                        isEligible = false;
-                        ineligibilityReason = "12th marks " + sd.getXiiMarksPercentage() + "% < required " + ec.getMinXiiMarks() + "%";
-                    } else if (ec.getGraduationYear() != null && ar.getUgYearOfPass() != null 
-                            && !ar.getUgYearOfPass().equals(ec.getGraduationYear())) {
-                        isEligible = false;
-                        ineligibilityReason = "Graduation year " + ar.getUgYearOfPass() + " does not match required " + ec.getGraduationYear();
-                    }
-
-                    // Skill matching
-                    if (isEligible && ec.getRequiredSkills() != null && !ec.getRequiredSkills().isEmpty()) {
-                        java.util.Set<String> studentSkills = profile.getSkills().stream()
-                                .map(s -> s.getSkillName().toLowerCase().trim())
-                                .collect(java.util.stream.Collectors.toSet());
-                        
-                        java.util.List<String> missingSkills = ec.getRequiredSkills().stream()
-                                .filter(s -> !studentSkills.contains(s.toLowerCase().trim()))
-                                .collect(java.util.stream.Collectors.toList());
-                        
-                        if (!missingSkills.isEmpty()) {
-                            isEligible = false;
-                            ineligibilityReason = "Missing required skills: " + String.join(", ", missingSkills);
-                        }
-                    }
-
-                    // Department check
-                    if (isEligible && ec.getAllowedDepartments() != null && !ec.getAllowedDepartments().isEmpty()) {
-                        Long studentDeptId = profile.getUser() != null && profile.getUser().getDepartment() != null
-                                ? profile.getUser().getDepartment().getId() : null;
-                        boolean deptMatch = ec.getAllowedDepartments().stream()
-                                .anyMatch(d -> d.getId().equals(studentDeptId));
-                        if (!deptMatch) {
-                            isEligible = false;
-                            ineligibilityReason = "Your department is not eligible for this drive.";
-                        }
-                    }
-                }
-
-                // BUG 6: Profile Completion Validation (min 80%)
-                double completion = studentProfileService.calculateCompletionPercentage(profile);
-                if (completion < 80.0) {
-                    isEligible = false;
-                    ineligibilityReason = (ineligibilityReason == null ? "" : ineligibilityReason + " ") + 
-                        "Profile is only " + String.format("%.1f", completion) + "% complete (minimum 80% required).";
-                }
-            }
-
-            DriveApplication app = appliedMap.get(drive.getId());
-            boolean hasApplied = app != null;
-            String  appStage   = hasApplied && app.getStage() != null ? app.getStage().name() : null;
-
-            return PlacementMapper.toDriveDto(drive, isEligible, ineligibilityReason, hasApplied, appStage);
+            return PlacementMapper.toDriveDto(
+                    drive,
+                    evaluation.isEligible(),
+                    evaluation.getPrimaryReason(),
+                    hasApplied,
+                    applicationStage
+            );
         }).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<PlacementDriveDto> getEligibleDrives(String email) {
+        return getVisibleDrives(email).stream()
+                .filter(drive -> Boolean.TRUE.equals(drive.getIsEligible()))
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)

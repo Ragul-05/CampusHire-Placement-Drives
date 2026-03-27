@@ -47,6 +47,7 @@ type Student = {
   skills: string[];
   currentStage?: string;
   facultyApproved: boolean;
+  hasApplied?: boolean;
 };
 
 type FilterResult = {
@@ -101,8 +102,8 @@ function isEligible(s: Student, c: EligibilityCriteria): boolean {
   if (s.cgpa < c.minCgpa) return false;
   if (s.standingArrears > c.maxStandingArrears) return false;
   if (s.historyOfArrears > c.maxHistoryOfArrears) return false;
-  if (c.allowedDepartments.length && !c.allowedDepartments.includes(s.department)) return false;
-  if (c.allowedGraduationYears.length && !c.allowedGraduationYears.includes(s.graduationYear)) return false;
+  if (c.allowedDepartments.length && (!s.department || !c.allowedDepartments.includes(s.department))) return false;
+  if (c.allowedGraduationYears.length && (s.graduationYear == null || !c.allowedGraduationYears.includes(s.graduationYear))) return false;
   return true;
 }
 
@@ -629,21 +630,23 @@ export default function DriveFiltering({ onNavigate }: { onNavigate?: (view: any
                                ? <span className={`badge ${stageCls[s.currentStage] ?? 'info'}`}>{s.currentStage}</span>
                                : <span className="badge" style={{ background: '#f1f5f9', color: '#64748b' }}>—</span>}
                            </td>
-                           <td style={{ textAlign: 'center' }}>
+                          <td style={{ textAlign: 'center' }}>
                              <button
                                className={`df-approve-toggle ${s.facultyApproved ? 'approved' : ''}`}
                                onClick={() => toggleApproval(s.id, s.facultyApproved)}
                                title={s.facultyApproved ? 'Revoke Approval' : 'Approve for this Drive'}
+                               disabled={!s.hasApplied || !s.eligible}
                              >
                                {s.facultyApproved ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
                              </button>
                            </td>
                            <td style={{ textAlign: 'center' }}>
-                             {s.currentStage && s.currentStage !== 'SELECTED' ? (
+                             {s.hasApplied && s.currentStage && s.currentStage !== 'SELECTED' ? (
                                <select
                                  className="stage-select"
                                  value={s.currentStage}
                                  onChange={e => updateStage(s.id, e.target.value)}
+                                 disabled={!s.facultyApproved}
                                >
                                  <option value="APPLIED">Applied</option>
                                  <option value="ASSESSMENT">Assessment</option>

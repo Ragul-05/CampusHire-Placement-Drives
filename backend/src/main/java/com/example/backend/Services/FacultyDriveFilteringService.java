@@ -1,21 +1,35 @@
 package com.example.backend.Services;
 
+import com.example.backend.DTOs.Faculty.DriveFilterResultDTO;
 import com.example.backend.DTOs.Faculty.EligibilityCriteriaDTO;
 import com.example.backend.DTOs.Faculty.FacultyDriveDTO;
 import com.example.backend.DTOs.Faculty.FacultyStudentDTO;
-import com.example.backend.DTOs.Faculty.DriveFilterResultDTO;
 import com.example.backend.Exceptions.ResourceNotFoundException;
 import com.example.backend.Exceptions.UnauthorizedActionException;
-import com.example.backend.Models.*;
+import com.example.backend.Models.Department;
+import com.example.backend.Models.DriveApplication;
+import com.example.backend.Models.EligibilityCriteria;
+import com.example.backend.Models.PlacementDrive;
+import com.example.backend.Models.StudentProfile;
+import com.example.backend.Models.StudentSkill;
+import com.example.backend.Models.User;
 import com.example.backend.Models.enums.ApplicationStage;
 import com.example.backend.Models.enums.DriveStatus;
+import com.example.backend.Models.enums.Role;
 import com.example.backend.Models.enums.VerificationStatus;
-import com.example.backend.Repositories.*;
+import com.example.backend.Repositories.DriveApplicationRepository;
+import com.example.backend.Repositories.PlacementDriveRepository;
+import com.example.backend.Repositories.StudentProfileRepository;
+import com.example.backend.Repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,139 +48,97 @@ public class FacultyDriveFilteringService {
     private DriveApplicationRepository driveApplicationRepository;
 
     @Autowired
-    private FacultyStudentService facultyStudentService;
+    private PlacementEligibilityService placementEligibilityService;
+
+    @Autowired
+    private StudentProfileService studentProfileService;
 
     public List<FacultyDriveDTO> getActiveDrivesForFaculty(String facultyEmail) {
-        User faculty = userRepository.findByEmail(facultyEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("Faculty not found"));
-
-        if (faculty.getDepartment() == null) {
-            throw new UnauthorizedActionException("Faculty is not assigned to any department");
-        }
-
+        User faculty = getAuthenticatedFaculty(facultyEmail);
         Long departmentId = faculty.getDepartment().getId();
 
-        // Get drives that are UPCOMING or ONGOING for the faculty's department
-        List<PlacementDrive> drives = placementDriveRepository
-                .findByStatusInAndAllowedDepartmentId(
-                        Arrays.asList(DriveStatus.UPCOMING, DriveStatus.ONGOING),
-                        departmentId);
-
-        return drives.stream()
+        return placementDriveRepository
+                .findByStatusInAndAllowedDepartmentId(List.of(DriveStatus.UPCOMING, DriveStatus.ONGOING), departmentId)
+                .stream()
                 .map(this::mapDriveToDTO)
                 .collect(Collectors.toList());
     }
 
     public List<FacultyDriveDTO> getAllDrivesForFaculty(String facultyEmail) {
-        User faculty = userRepository.findByEmail(facultyEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("Faculty not found"));
-
-        if (faculty.getDepartment() == null) {
-            throw new UnauthorizedActionException("Faculty is not assigned to any department");
-        }
-
+        User faculty = getAuthenticatedFaculty(facultyEmail);
         Long departmentId = faculty.getDepartment().getId();
-        List<PlacementDrive> drives = placementDriveRepository.findByAllowedDepartmentId(departmentId);
 
-        return drives.stream()
+        return placementDriveRepository.findByAllowedDepartmentId(departmentId)
+                .stream()
                 .map(this::mapDriveToDTO)
                 .collect(Collectors.toList());
     }
 
-    public DriveFilterResultDTO filterEligibleStudentsForDrive(
-            Long driveId, String facultyEmail) {
-
-        User faculty = userRepository.findByEmail(facultyEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("Faculty not found"));
-
-        if (faculty.getDepartment() == null) {
-            throw new UnauthorizedActionException("Faculty is not assigned to any department");
-        }
+    @Transactional(readOnly = true)
+    public DriveFilterResultDTO filterEligibleStudentsForDrive(Long driveId, String facultyEmail) {
+        User faculty = getAuthenticatedFaculty(facultyEmail);
+        Long departmentId = faculty.getDepartment().getId();
 
         PlacementDrive drive = placementDriveRepository.findById(driveId)
                 .orElseThrow(() -> new ResourceNotFoundException("Placement drive not found"));
 
-        Long departmentId = faculty.getDepartment().getId();
+        List<StudentProfile> departmentStudents = studentProfileRepository.findByUserDepartmentId(departmentId);
+        Map<Long, DriveApplication> applications = driveApplicationRepository
+                .findByDriveIdAndStudentProfileUserDepartmentId(driveId, departmentId)
+                .stream()
+                .collect(Collectors.toMap(app -> app.getStudentProfile().getId(), app -> app, (a, b) -> a));
 
-        // Get all verified students from the department
-        List<StudentProfile> verifiedStudents = studentProfileRepository
-                .findByUserDepartmentIdAndVerificationStatus(departmentId, VerificationStatus.VERIFIED);
+        List<FacultyStudentDTO> students = new ArrayList<>();
+        Map<Long, List<String>> ineligibleReasons = new java.util.LinkedHashMap<>();
 
-        long totalVerified = verifiedStudents.size();
+        for (StudentProfile student : departmentStudents) {
+            PlacementEligibilityService.EligibilityEvaluation evaluation =
+                    placementEligibilityService.evaluate(student, drive);
 
-        List<FacultyStudentDTO> eligibleStudents = new ArrayList<>();
-        Map<Long, List<String>> ineligibleReasons = new HashMap<>();
-        EligibilityCriteria criteria = drive.getEligibilityCriteria();
-
-        for (StudentProfile student : verifiedStudents) {
-            List<String> reasons = new ArrayList<>();
-            if (criteria != null) {
-                if (student.getAcademicRecord() != null) {
-                    if (student.getAcademicRecord().getCgpa() < criteria.getMinCgpa()) {
-                        reasons.add("CGPA below minimum: " + student.getAcademicRecord().getCgpa() + " < " + criteria.getMinCgpa());
-                    }
-                    if (student.getAcademicRecord().getStandingArrears() > criteria.getMaxStandingArrears()) {
-                        reasons.add("Standing arrears exceed limit: " + student.getAcademicRecord().getStandingArrears() + " > " + criteria.getMaxStandingArrears());
-                    }
-                    if (student.getAcademicRecord().getHistoryOfArrears() > criteria.getMaxHistoryOfArrears()) {
-                        reasons.add("History of arrears exceed limit: " + student.getAcademicRecord().getHistoryOfArrears() + " > " + criteria.getMaxHistoryOfArrears());
-                    }
-                    if (criteria.getGraduationYear() != null &&
-                        !criteria.getGraduationYear().equals(student.getAcademicRecord().getUgYearOfPass())) {
-                        reasons.add("Graduation year not allowed: " + student.getAcademicRecord().getUgYearOfPass());
-                    }
-                } else {
-                    reasons.add("Academic record not available");
-                }
+            if (!evaluation.isEligible()) {
+                ineligibleReasons.put(student.getId(), evaluation.getReasons());
             }
 
-            if (!Boolean.TRUE.equals(student.getIsEligibleForPlacements())) {
-                reasons.add("Not marked as eligible for placements");
-            }
-
-            FacultyStudentDTO dto = mapStudentToDTO(student, driveId);
-            eligibleStudents.add(dto);
-            if (!reasons.isEmpty()) {
-                ineligibleReasons.put(student.getId(), reasons);
-            }
+            students.add(mapStudentToDTO(student, applications.get(student.getId()), evaluation.isEligible()));
         }
+
+        long totalVerified = departmentStudents.stream()
+                .filter(student -> student.getVerificationStatus() == VerificationStatus.VERIFIED)
+                .count();
 
         return DriveFilterResultDTO.builder()
                 .drive(mapDriveToDTO(drive))
                 .totalVerified(totalVerified)
-                .eligibleStudents(eligibleStudents)
+                .eligibleStudents(students)
                 .ineligibleReasons(ineligibleReasons)
                 .build();
     }
 
     @Transactional
     public void toggleFacultyApproval(Long studentId, Long driveId, boolean approved, String facultyEmail) {
-        User faculty = userRepository.findByEmail(facultyEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("Faculty not found"));
-
+        User faculty = getAuthenticatedFaculty(facultyEmail);
         StudentProfile student = studentProfileRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
 
-        // Verify faculty can update this student
         if (!student.getUser().getDepartment().getId().equals(faculty.getDepartment().getId())) {
             throw new UnauthorizedActionException("Cannot approve student from different department");
         }
 
+        PlacementDrive drive = placementDriveRepository.findById(driveId)
+                .orElseThrow(() -> new ResourceNotFoundException("Drive not found"));
+
+        PlacementEligibilityService.EligibilityEvaluation evaluation =
+                placementEligibilityService.evaluate(student, drive);
+        if (!evaluation.isEligible()) {
+            throw new IllegalArgumentException(evaluation.getPrimaryReason());
+        }
+
         DriveApplication application = driveApplicationRepository
                 .findByStudentProfileIdAndDriveId(studentId, driveId)
-                .orElseGet(() -> {
-                    PlacementDrive drive = placementDriveRepository.findById(driveId)
-                            .orElseThrow(() -> new ResourceNotFoundException("Drive not found"));
-                    return DriveApplication.builder()
-                            .studentProfile(student)
-                            .drive(drive)
-                            .stage(ApplicationStage.APPLIED)
-                            .appliedAt(java.time.LocalDateTime.now())
-                            .build();
-                });
+                .orElseThrow(() -> new IllegalArgumentException("Student must apply for the drive before faculty approval."));
 
         application.setFacultyApproved(approved);
-        application.setLastUpdatedAt(java.time.LocalDateTime.now());
+        application.setLastUpdatedAt(LocalDateTime.now());
         application.setLastUpdatedBy(faculty);
         driveApplicationRepository.save(application);
     }
@@ -179,37 +151,39 @@ public class FacultyDriveFilteringService {
         StudentProfile student = studentProfileRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
 
-        // Faculty check
-        if (actor.getRole() == com.example.backend.Models.enums.Role.FACULTY) {
-            if (!student.getUser().getDepartment().getId().equals(actor.getDepartment().getId())) {
-                throw new UnauthorizedActionException("Faculty cannot update student from different department");
-            }
-            if ("SELECTED".equals(stage)) {
-                throw new UnauthorizedActionException("Faculty cannot mark students as SELECTED. Only Placement Head can do this.");
-            }
+        if (actor.getRole() == Role.FACULTY
+                && !student.getUser().getDepartment().getId().equals(actor.getDepartment().getId())) {
+            throw new UnauthorizedActionException("Faculty cannot update student from different department");
         }
 
-        // Find or create application
-        Optional<DriveApplication> existingApp = driveApplicationRepository
-                .findByStudentProfileIdAndDriveId(studentId, driveId);
-
-        DriveApplication application;
-        if (existingApp.isPresent()) {
-            application = existingApp.get();
-            application.setStage(ApplicationStage.valueOf(stage));
-        } else {
-            // Create new application
-            PlacementDrive drive = placementDriveRepository.findById(driveId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Drive not found"));
-
-            application = DriveApplication.builder()
-                    .studentProfile(student)
-                    .drive(drive)
-                    .stage(ApplicationStage.valueOf(stage))
-                    .build();
+        ApplicationStage targetStage = ApplicationStage.valueOf(stage);
+        if (actor.getRole() == Role.FACULTY && targetStage == ApplicationStage.SELECTED) {
+            throw new UnauthorizedActionException("Faculty cannot mark students as SELECTED. Only Placement Head can do this.");
         }
 
+        DriveApplication application = driveApplicationRepository
+                .findByStudentProfileIdAndDriveId(studentId, driveId)
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found for this student and drive"));
+
+        if (actor.getRole() == Role.FACULTY && !Boolean.TRUE.equals(application.getFacultyApproved())) {
+            throw new UnauthorizedActionException("Faculty can only move forward students who are faculty-approved.");
+        }
+
+        application.setStage(targetStage);
+        application.setLastUpdatedAt(LocalDateTime.now());
+        application.setLastUpdatedBy(actor);
         driveApplicationRepository.save(application);
+    }
+
+    private User getAuthenticatedFaculty(String email) {
+        User faculty = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Faculty not found"));
+
+        if (faculty.getDepartment() == null) {
+            throw new UnauthorizedActionException("Faculty is not assigned to any department");
+        }
+
+        return faculty;
     }
 
     private FacultyDriveDTO mapDriveToDTO(PlacementDrive drive) {
@@ -219,13 +193,13 @@ public class FacultyDriveFilteringService {
                 .title(drive.getTitle())
                 .role(drive.getRole())
                 .ctcLpa(drive.getCtcLpa())
-                .status(drive.getStatus().toString())
+                .status(drive.getStatus().name())
                 .eligibilityCriteria(mapCriteriaToDTO(drive.getEligibilityCriteria()))
                 .build();
     }
 
-    private EligibilityCriteriaDTO mapCriteriaToDTO(EligibilityCriteria ec) {
-        if (ec == null) {
+    private EligibilityCriteriaDTO mapCriteriaToDTO(EligibilityCriteria criteria) {
+        if (criteria == null) {
             return EligibilityCriteriaDTO.builder()
                     .minCgpa(0.0)
                     .maxStandingArrears(99)
@@ -235,31 +209,30 @@ public class FacultyDriveFilteringService {
                     .requiredSkills(new ArrayList<>())
                     .build();
         }
+
         return EligibilityCriteriaDTO.builder()
-                .minCgpa(ec.getMinCgpa())
-                .maxStandingArrears(ec.getMaxStandingArrears())
-                .maxHistoryOfArrears(ec.getMaxHistoryOfArrears())
-                .allowedDepartments(ec.getAllowedDepartments() != null ?
-                        ec.getAllowedDepartments().stream()
-                            .map(Department::getName)
-                            .collect(Collectors.toList()) : new ArrayList<>())
-                .allowedGraduationYears(ec.getGraduationYear() != null ?
-                        List.of(ec.getGraduationYear()) : new ArrayList<>())
-                .requiredSkills(ec.getRequiredSkills() != null ?
-                        ec.getRequiredSkills() : new ArrayList<>())
+                .minCgpa(criteria.getMinCgpa())
+                .maxStandingArrears(criteria.getMaxStandingArrears())
+                .maxHistoryOfArrears(criteria.getMaxHistoryOfArrears())
+                .allowedDepartments(criteria.getAllowedDepartments() != null
+                        ? criteria.getAllowedDepartments().stream().map(Department::getName).collect(Collectors.toList())
+                        : new ArrayList<>())
+                .allowedGraduationYears(criteria.getGraduationYear() != null
+                        ? List.of(criteria.getGraduationYear())
+                        : new ArrayList<>())
+                .requiredSkills(criteria.getRequiredSkills() != null ? criteria.getRequiredSkills() : new ArrayList<>())
                 .build();
     }
 
-    private FacultyStudentDTO mapStudentToDTO(StudentProfile student, Long driveId) {
-        Optional<DriveApplication> app = driveApplicationRepository.findByStudentProfileIdAndDriveId(student.getId(), driveId);
-
+    private FacultyStudentDTO mapStudentToDTO(StudentProfile student, DriveApplication application, boolean eligible) {
         String fullName = student.getUser().getEmail();
-        if (student.getPersonalDetails() != null) {
-            String f = student.getPersonalDetails().getFirstName();
-            String l = student.getPersonalDetails().getLastName();
-            if (f != null && !f.trim().isEmpty()) {
-                fullName = f + (l != null ? " " + l : "");
-            }
+        if (student.getPersonalDetails() != null && student.getPersonalDetails().getFirstName() != null
+                && !student.getPersonalDetails().getFirstName().isBlank()) {
+            String firstName = student.getPersonalDetails().getFirstName().trim();
+            String lastName = student.getPersonalDetails().getLastName() != null
+                    ? student.getPersonalDetails().getLastName().trim()
+                    : "";
+            fullName = (firstName + " " + lastName).trim();
         }
 
         return FacultyStudentDTO.builder()
@@ -269,22 +242,30 @@ public class FacultyDriveFilteringService {
                 .batch(student.getBatch())
                 .name(fullName)
                 .email(student.getUser().getEmail())
-                .verificationStatus(student.getVerificationStatus().toString())
-                .isLocked(student.getIsLocked())
-                .isEligibleForPlacements(student.getIsEligibleForPlacements())
-                .isPlaced(student.getIsPlaced())
-                .numberOfOffers(student.getNumberOfOffers())
-                .highestPackageLpa(student.getHighestPackageLpa())
+                .verificationStatus(student.getVerificationStatus() != null
+                        ? student.getVerificationStatus().name()
+                        : VerificationStatus.PENDING.name())
+                .isLocked(Boolean.TRUE.equals(student.getIsLocked()))
+                .isEligibleForPlacements(eligible)
+                .eligibleForAdminReview(Boolean.TRUE.equals(student.getEligibleForAdminReview()))
+                .isPlaced(Boolean.TRUE.equals(student.getIsPlaced()))
+                .numberOfOffers(student.getNumberOfOffers() != null ? student.getNumberOfOffers() : 0)
+                .highestPackageLpa(student.getHighestPackageLpa() != null ? student.getHighestPackageLpa() : 0.0)
                 .cgpa(student.getAcademicRecord() != null ? student.getAcademicRecord().getCgpa() : null)
                 .standingArrears(student.getAcademicRecord() != null ? student.getAcademicRecord().getStandingArrears() : 0)
                 .historyOfArrears(student.getAcademicRecord() != null ? student.getAcademicRecord().getHistoryOfArrears() : 0)
-                .facultyApproved(app.map(DriveApplication::getFacultyApproved).orElse(false))
-                .currentStage(app.map(a -> a.getStage().toString()).orElse(null))
+                .facultyApproved(application != null && Boolean.TRUE.equals(application.getFacultyApproved()))
+                .currentStage(application != null && application.getStage() != null ? application.getStage().name() : null)
+                .hasApplied(application != null)
                 .department(student.getUser().getDepartment() != null ? student.getUser().getDepartment().getName() : null)
                 .graduationYear(student.getAcademicRecord() != null ? student.getAcademicRecord().getUgYearOfPass() : null)
-                .skills(student.getSkills() != null ? 
-                    student.getSkills().stream().map(StudentSkill::getSkillName).collect(Collectors.toList()) : 
-                    new ArrayList<>())
+                .profileCompletionPercentage(studentProfileService.calculateCompletionPercentage(student))
+                .phoneNumber(student.getContactDetails() != null ? student.getContactDetails().getStudentMobile1() : null)
+                .linkedinUrl(student.getProfessionalProfile() != null ? student.getProfessionalProfile().getLinkedinProfileUrl() : null)
+                .githubUrl(student.getProfessionalProfile() != null ? student.getProfessionalProfile().getGithubProfileUrl() : null)
+                .skills(student.getSkills() != null
+                        ? student.getSkills().stream().map(StudentSkill::getSkillName).collect(Collectors.toList())
+                        : List.of())
                 .build();
     }
 }

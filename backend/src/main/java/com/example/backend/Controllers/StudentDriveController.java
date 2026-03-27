@@ -22,6 +22,12 @@ public class StudentDriveController {
                 .ok(ApiResponse.success("Visible drives fetched", studentDriveService.getVisibleDrives(email)));
     }
 
+    @GetMapping("/eligible")
+    public ResponseEntity<ApiResponse<List<PlacementDriveDto>>> getEligibleDrives(@RequestParam String email) {
+        return ResponseEntity
+                .ok(ApiResponse.success("Eligible drives fetched", studentDriveService.getEligibleDrives(email)));
+    }
+
     @GetMapping("/{driveId}")
     public ResponseEntity<ApiResponse<PlacementDriveDto>> getDriveDetails(@RequestParam String email,
             @PathVariable Long driveId) {

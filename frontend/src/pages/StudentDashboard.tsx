@@ -26,6 +26,7 @@ type StudentProfile = {
   numberOfOffers: number;
   highestPackageLpa: number | null;
   resumeUrl: string | null;
+  profileCompletion?: number;
   personalDetails?: {
     firstName: string;
     lastName: string;
@@ -66,6 +67,11 @@ type Application = {
 
 /* GET /api/student/dashboard/stats */
 type DashboardStats = {
+  totalDrives: number;
+  eligibleDrives: number;
+  appliedDrives: number;
+  verificationStatus: 'PENDING' | 'VERIFIED' | 'REJECTED';
+  isEligibleForPlacements: boolean;
   totalPlaced: number;
   ongoingDrives: number;
   totalCompanies: number;
@@ -103,6 +109,7 @@ function fmtDate(dt: string | null | undefined) {
 /** Profile completion % based on filled sections */
 function calcCompletion(p: StudentProfile | null): number {
   if (!p) return 0;
+  if (typeof p.profileCompletion === 'number') return Math.round(p.profileCompletion);
   let score = 0;
   if (p.rollNo)                        score += 20;
   if (p.personalDetails?.firstName)    score += 20;
@@ -327,6 +334,11 @@ export default function StudentDashboard() {
     return () => { active = false; };
   }, [email, refreshKey]);
 
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setRefreshKey(k => k + 1), 30000);
+    return () => window.clearInterval(intervalId);
+  }, []);
+
   /* ── Apply for drive ── */
   const handleApply = async (driveId: number) => {
     if (profile?.verificationStatus !== 'VERIFIED') {
@@ -379,10 +391,12 @@ export default function StudentDashboard() {
   const recentApps = applications.slice(0, 5);
 
   /* ── KPI numbers ── */
-  const eligibleCount    = drives.filter(d => d.isEligible).length;
-  const appliedCount     = applications.length;
+  const eligibleCount    = stats?.eligibleDrives ?? drives.filter(d => d.isEligible).length;
+  const appliedCount     = stats?.appliedDrives ?? applications.length;
   const offersCount      = profile?.numberOfOffers ?? 0;
   const selectedCount    = applications.filter(a => a.stage === 'SELECTED').length;
+  const totalDriveCount  = stats?.totalDrives ?? drives.length;
+  const ongoingDriveCount = stats?.ongoingDrives ?? drives.filter(d => d.status === 'ONGOING').length;
 
   /* ══ RENDER ══ */
   return (
@@ -424,14 +438,14 @@ export default function StudentDashboard() {
             <KpiCard
               label="Eligible Drives"
               value={eligibleCount}
-              sub={`${drives.length} total drives`}
+              sub={`${totalDriveCount} total drives`}
               icon={<Briefcase size={20} />}
               color="#6366f1"
             />
             <KpiCard
               label="Applications"
               value={appliedCount}
-              sub={latestApp ? `Latest: ${latestApp.companyName}` : 'None yet'}
+              sub={latestApp ? `Latest: ${latestApp.companyName}` : `${ongoingDriveCount} ongoing drives`}
               icon={<FileText size={20} />}
               color="#3b82f6"
             />

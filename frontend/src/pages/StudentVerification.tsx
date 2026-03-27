@@ -315,7 +315,7 @@ export default function StudentVerification({ onNavigate }: { onNavigate?: (view
   const [filtered, setFiltered]     = useState<StudentProfile[]>([]);
   const [selected, setSelected]     = useState<StudentProfile | null>(null);
   const [search, setSearch]         = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('PENDING');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast]           = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);

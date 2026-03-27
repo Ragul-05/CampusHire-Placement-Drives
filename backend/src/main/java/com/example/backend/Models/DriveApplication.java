@@ -29,6 +29,9 @@ public class DriveApplication {
 
     private LocalDateTime appliedAt;
     private LocalDateTime lastUpdatedAt;
+    
+    @Builder.Default
+    private Boolean facultyApproved = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "last_updated_by")

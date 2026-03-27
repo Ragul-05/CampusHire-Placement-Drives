@@ -15,6 +15,7 @@ public class AdminStudentProfileDTO {
     private VerificationStatus verificationStatus;
     private Boolean isLocked;
     private Boolean isPlaced;
+    private Boolean eligibleForAdminReview;
     private Double highestPackageLpa;
     private String resumeUrl;
 }

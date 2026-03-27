@@ -26,6 +26,7 @@ public class StudentProfileService {
         // Certifications are @OneToMany — fetch separately to avoid MultipleBagFetchException
         // The @Transactional context keeps the session open so getCertifications() lazy-loads fine here
         StudentProfileDto dto = StudentMapper.toDto(profile);
+        dto.setProfileCompletion(calculateCompletionPercentage(profile));
         return dto;
     }
 
@@ -74,6 +75,7 @@ public class StudentProfileService {
         pd.setDateOfBirth(d.getDateOfBirth());
         pd.setHostelerOrDayScholar(trim(d.getHostelerOrDayScholar()));
         pd.setBio(trim(d.getBio()));
+        markProfileDirty(p);
         studentProfileRepository.save(p);
     }
 
@@ -99,6 +101,7 @@ public class StudentProfileService {
         cd.setCity(trim(d.getCity()));
         cd.setState(trim(d.getState()));
         cd.setPincode(trim(d.getPincode()));
+        markProfileDirty(p);
         studentProfileRepository.save(p);
     }
 
@@ -133,6 +136,7 @@ public class StudentProfileService {
         ar.setHistoryOfArrears(d.getHistoryOfArrears() != null ? d.getHistoryOfArrears() : 0);
         ar.setHasHistoryOfArrears(Boolean.TRUE.equals(d.getHasHistoryOfArrears()));
         ar.setCourseGapInYears(d.getCourseGapInYears() != null ? d.getCourseGapInYears() : 0);
+        markProfileDirty(p);
         studentProfileRepository.save(p);
     }
 
@@ -159,6 +163,7 @@ public class StudentProfileService {
         sd.setXiiBoardOfStudy(trim(d.getXiiBoardOfStudy()));
         sd.setXiiCutOffMarks(d.getXiiCutOffMarks());
         sd.setDiplomaMarksPercentage(d.getDiplomaMarksPercentage());
+        markProfileDirty(p);
         studentProfileRepository.save(p);
     }
 
@@ -184,6 +189,7 @@ public class StudentProfileService {
         pp.setHackerrankProfileUrl(trim(d.getHackerrankProfileUrl()));
         pp.setCodechefProfileUrl(trim(d.getCodechefProfileUrl()));
         pp.setCodeforcesProfileUrl(trim(d.getCodeforcesProfileUrl()));
+        markProfileDirty(p);
         studentProfileRepository.save(p);
     }
 
@@ -213,6 +219,7 @@ public class StudentProfileService {
                 p.getCertifications().add(c);
             }
         }
+        markProfileDirty(p);
         studentProfileRepository.save(p);
     }
 
@@ -235,6 +242,7 @@ public class StudentProfileService {
         id.setFamilyCardNumber(trim(d.getFamilyCardNumber()));
         id.setIsPanCardAvailable(Boolean.TRUE.equals(d.getIsPanCardAvailable()));
         id.setIsPassportAvailable(Boolean.TRUE.equals(d.getIsPassportAvailable()));
+        markProfileDirty(p);
         studentProfileRepository.save(p);
     }
 
@@ -264,6 +272,7 @@ public class StudentProfileService {
                 p.getSkills().add(s);
             }
         }
+        markProfileDirty(p);
         studentProfileRepository.save(p);
     }
 
@@ -278,7 +287,26 @@ public class StudentProfileService {
         // Always set upload timestamp to now when resume is saved
         p.setResumeUploadedAt(java.time.LocalDateTime.now());
         p.setResumeSummary(trim(d.getResumeSummary()));
+        markProfileDirty(p);
         studentProfileRepository.save(p);
+    }
+
+    
+    public Double calculateCompletionPercentage(StudentProfile profile) {
+        if (profile == null) return 0.0;
+        
+        double totalSections = 7.0;
+        double completedSections = 0.0;
+        
+        if (profile.getPersonalDetails() != null && profile.getPersonalDetails().getFirstName() != null) completedSections++;
+        if (profile.getContactDetails() != null && profile.getContactDetails().getStudentMobile1() != null) completedSections++;
+        if (profile.getAcademicRecord() != null && profile.getAcademicRecord().getCgpa() != null) completedSections++;
+        if (profile.getSchoolingDetails() != null && profile.getSchoolingDetails().getXMarksPercentage() != null) completedSections++;
+        if (profile.getProfessionalProfile() != null && profile.getProfessionalProfile().getLinkedinProfileUrl() != null) completedSections++;
+        if (profile.getCertifications() != null && !profile.getCertifications().isEmpty()) completedSections++;
+        if (profile.getResumeUrl() != null && !profile.getResumeUrl().isEmpty()) completedSections++;
+        
+        return (completedSections / totalSections) * 100.0;
     }
 
     /* ── Utility: convert empty string → null for optional text fields ── */
@@ -286,5 +314,14 @@ public class StudentProfileService {
         if (s == null) return null;
         String t = s.trim();
         return t.isEmpty() ? null : t;
+    }
+
+    private void markProfileDirty(StudentProfile profile) {
+        // Reset verification when student edits their profile; admin/faculty will re-verify
+        if (profile.getVerificationStatus() != VerificationStatus.VERIFIED) {
+            profile.setVerificationStatus(VerificationStatus.PENDING);
+        }
+        profile.setIsEligibleForPlacements(false);
+        profile.setEligibleForAdminReview(false);
     }
 }

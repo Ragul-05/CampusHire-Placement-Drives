@@ -22,6 +22,14 @@ public class AdminStudentService {
                 .collect(Collectors.toList());
     }
 
+    public List<AdminStudentProfileDTO> getEligibleForAdminReview() {
+        return studentProfileRepository.findByVerificationStatusAndEligibleForAdminReviewTrue(
+                        com.example.backend.Models.enums.VerificationStatus.VERIFIED)
+                .stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+    }
+
     public AdminStudentProfileDTO toggleProfileLock(Long studentId) {
         StudentProfile profile = studentProfileRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
@@ -51,6 +59,7 @@ public class AdminStudentService {
                 .verificationStatus(profile.getVerificationStatus())
                 .isLocked(profile.getIsLocked() != null ? profile.getIsLocked() : false)
                 .isPlaced(profile.getIsPlaced() != null ? profile.getIsPlaced() : false)
+                .eligibleForAdminReview(profile.getEligibleForAdminReview() != null ? profile.getEligibleForAdminReview() : false)
                 .highestPackageLpa(profile.getHighestPackageLpa())
                 .resumeUrl(profile.getResumeUrl())
                 .build();

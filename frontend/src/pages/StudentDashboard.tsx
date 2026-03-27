@@ -119,7 +119,15 @@ function calcCompletion(p: StudentProfile | null): number {
 
 /* ── Verification Banner ── */
 function VerificationBanner({ status, remarks }: { status: string; remarks?: string }) {
-  if (status === 'VERIFIED') return null;
+  if (status === 'VERIFIED') return (
+    <div className="sd-banner success fade-in">
+      <CheckCircle2 size={18} />
+      <div>
+        <strong>Profile Verified</strong>
+        <p>Your profile has been verified by faculty. You can now apply for placement drives.</p>
+      </div>
+    </div>
+  );
   if (status === 'PENDING') return (
     <div className="sd-banner pending fade-in">
       <Clock size={18} />
@@ -299,11 +307,14 @@ export default function StudentDashboard() {
           getJson<Drive[]>(`/api/student/drives?email=${encodeURIComponent(email)}`),
           // GET /api/student/applications?email=
           getJson<Application[]>(`/api/student/applications?email=${encodeURIComponent(email)}`),
-          // GET /api/student/dashboard/stats
-          getJson<DashboardStats>('/api/student/dashboard/stats'),
+          // GET /api/student/dashboard/stats?email=
+          getJson<DashboardStats>(`/api/student/dashboard/stats?email=${encodeURIComponent(email)}`),
         ]);
         if (!active) return;
         setProfile(profRes.data);
+        if (profRes.data?.verificationStatus) {
+          localStorage.setItem('verificationStatus', profRes.data.verificationStatus);
+        }
         setDrives(drivesRes.data   || []);
         setApplications(appsRes.data || []);
         setStats(statsRes.data);

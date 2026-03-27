@@ -52,6 +52,16 @@ public class FacultyStudentController {
         return ResponseEntity.ok(ApiResponse.success("Student profile verification updated successfully", null));
     }
 
+    @AuditAction(action = "SEND_STUDENT_TO_ADMIN", targetEntity = "STUDENT_PROFILE")
+    @PostMapping("/{id}/send-to-admin")
+    public ResponseEntity<ApiResponse<Void>> sendToAdmin(
+            @PathVariable Long id,
+            @RequestParam(required = false, defaultValue = "faculty@dept.com") String facultyEmail) {
+
+        facultyStudentService.sendStudentToAdmin(id, facultyEmail);
+        return ResponseEntity.ok(ApiResponse.success("Student flagged for admin review", null));
+    }
+
     @AuditAction(action = "VIEW_VERIFICATION_HISTORY", targetEntity = "PROFILE_VERIFICATION")
     @GetMapping("/verification-history")
     public ResponseEntity<ApiResponse<List<ProfileVerification>>> getVerificationHistory(

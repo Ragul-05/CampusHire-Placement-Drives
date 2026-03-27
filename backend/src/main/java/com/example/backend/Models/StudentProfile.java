@@ -40,6 +40,9 @@ public class StudentProfile {
     private Boolean isLocked;
     private Boolean isEligibleForPlacements;
     private Boolean interestedOnPlacement;
+    // When faculty marks a verified student for admin review
+    @Builder.Default
+    private Boolean eligibleForAdminReview = false;
 
     // ── Placement result ────────────────────────────────
     private Boolean isPlaced;

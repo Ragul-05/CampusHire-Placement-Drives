@@ -46,6 +46,7 @@ type Student = {
   isEligibleForPlacements: boolean;
   skills: string[];
   currentStage?: string;
+  facultyApproved: boolean;
 };
 
 type FilterResult = {
@@ -264,6 +265,7 @@ export default function DriveFiltering({ onNavigate }: { onNavigate?: (view: any
           standingArrears:  s.standingArrears  ?? 0,
           historyOfArrears: s.historyOfArrears ?? 0,
           skills:           s.skills           ?? [],
+          facultyApproved:  s.facultyApproved  ?? false,
         }));
       }
       setFilterResult(raw);
@@ -286,6 +288,21 @@ export default function DriveFiltering({ onNavigate }: { onNavigate?: (view: any
       if (selectedDriveId) runFilter(selectedDriveId as number);
     } catch (e: any) {
       setToast({ msg: e.message || 'Failed to update stage', type: 'error' });
+    }
+  };
+
+  /* ── Toggle Approval ── */
+  const toggleApproval = async (studentId: number, current: boolean) => {
+    try {
+      // ✅ POST /api/faculty/drives/{studentId}/approve?facultyEmail= body: {driveId, approved}
+      await postJson(
+        facultyUrl(`/api/faculty/drives/${studentId}/approve`),
+        { driveId: selectedDriveId, approved: !current }
+      );
+      setToast({ msg: 'Approval status toggled!', type: 'success' });
+      if (selectedDriveId) runFilter(selectedDriveId as number);
+    } catch (e: any) {
+      setToast({ msg: e.message || 'Failed to toggle approval', type: 'error' });
     }
   };
 
@@ -570,6 +587,7 @@ export default function DriveFiltering({ onNavigate }: { onNavigate?: (view: any
                         </th>
                         <th>Eligibility</th>
                         <th>Stage</th>
+                        <th style={{ textAlign: 'center' }}>Faculty Confirm</th>
                         <th style={{ textAlign: 'center' }}>Advance</th>
                       </tr>
                     </thead>
@@ -606,27 +624,36 @@ export default function DriveFiltering({ onNavigate }: { onNavigate?: (view: any
                           </td>
                           <td><SkillBar pct={s.skillMatch} /></td>
                           <td><EligiBadge eligible={s.eligible} /></td>
-                          <td>
+                           <td>
                             {s.currentStage
-                              ? <span className={`badge ${stageCls[s.currentStage] ?? 'info'}`}>{s.currentStage}</span>
-                              : <span className="badge" style={{ background: '#f1f5f9', color: '#64748b' }}>—</span>}
-                          </td>
-                          <td style={{ textAlign: 'center' }}>
-                            {s.currentStage && s.currentStage !== 'SELECTED' ? (
-                              <select
-                                className="stage-select"
-                                value={s.currentStage}
-                                onChange={e => updateStage(s.id, e.target.value)}
-                              >
-                                <option value="APPLIED">Applied</option>
-                                <option value="ASSESSMENT">Assessment</option>
-                                <option value="TECHNICAL">Technical</option>
-                                <option value="HR">HR Round</option>
-                              </select>
-                            ) : (
-                              <Star size={14} color={s.currentStage === 'SELECTED' ? '#f59e0b' : '#d1d5db'} />
-                            )}
-                          </td>
+                               ? <span className={`badge ${stageCls[s.currentStage] ?? 'info'}`}>{s.currentStage}</span>
+                               : <span className="badge" style={{ background: '#f1f5f9', color: '#64748b' }}>—</span>}
+                           </td>
+                           <td style={{ textAlign: 'center' }}>
+                             <button
+                               className={`df-approve-toggle ${s.facultyApproved ? 'approved' : ''}`}
+                               onClick={() => toggleApproval(s.id, s.facultyApproved)}
+                               title={s.facultyApproved ? 'Revoke Approval' : 'Approve for this Drive'}
+                             >
+                               {s.facultyApproved ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
+                             </button>
+                           </td>
+                           <td style={{ textAlign: 'center' }}>
+                             {s.currentStage && s.currentStage !== 'SELECTED' ? (
+                               <select
+                                 className="stage-select"
+                                 value={s.currentStage}
+                                 onChange={e => updateStage(s.id, e.target.value)}
+                               >
+                                 <option value="APPLIED">Applied</option>
+                                 <option value="ASSESSMENT">Assessment</option>
+                                 <option value="TECHNICAL">Technical</option>
+                                 <option value="HR">HR Round</option>
+                               </select>
+                             ) : (
+                               <Star size={14} color={s.currentStage === 'SELECTED' ? '#f59e0b' : '#d1d5db'} />
+                             )}
+                           </td>
                         </tr>
                       ))}
                     </tbody>

@@ -44,6 +44,7 @@ public class StudentProfileDto {
     private List<SkillDto>         skills;
     private IdentityDocsDto        identityDocs;
     private ResumeDto              resume;
+    private Double                 profileCompletion;
 
     /* ── 1. Personal Details ── */
     @Data @NoArgsConstructor @AllArgsConstructor

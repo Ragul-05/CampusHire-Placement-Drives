@@ -73,3 +73,11 @@ export function facultyUrl(path: string, extra: Record<string, string | number |
   return `${path}?${params.toString()}`;
 }
 
+// Convenience API helpers for new flows
+export async function sendStudentToAdmin(studentId: number) {
+  return postJson<void>(facultyUrl(`/api/faculty/students/${studentId}/send-to-admin`), {});
+}
+
+export async function fetchAdminReviewStudents() {
+  return getJson(`/api/admin/students/eligible-for-review`);
+}

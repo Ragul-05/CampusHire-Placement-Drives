@@ -16,6 +16,7 @@ public class FacultyStudentDTO {
     private String verificationStatus;
     private Boolean isLocked;
     private Boolean isEligibleForPlacements;
+    private Boolean eligibleForAdminReview;
     private Boolean isPlaced;
     private Integer numberOfOffers;
     private Double highestPackageLpa;
@@ -23,6 +24,12 @@ public class FacultyStudentDTO {
     private Double cgpa;
     private Integer standingArrears;
     private Integer historyOfArrears;
+
+    private Boolean facultyApproved;
+    private String currentStage;
+
+    private String department;
+    private Integer graduationYear;
 
     // Skills could be aggregated as a single string or list
     private List<String> skills;

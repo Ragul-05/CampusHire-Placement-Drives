@@ -23,8 +23,9 @@ public class StudentAuthController {
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<Void>> register(@RequestBody AuthRequestDto request,
-            @RequestParam String universityRegNo) {
-        studentAuthService.register(request, universityRegNo);
+                                                      @RequestParam String universityRegNo,
+                                                      @RequestParam String role) {
+        studentAuthService.register(request, universityRegNo, role);
         return ResponseEntity.ok(ApiResponse.success("Student registered successfully", null));
     }
 }

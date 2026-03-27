@@ -1,11 +1,15 @@
 package com.example.backend.DTOs.Faculty;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import java.util.List;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class FacultyDriveDTO {
     private Long id;
     private String companyName;
@@ -15,4 +19,5 @@ public class FacultyDriveDTO {
     private String status;
     private Long totalDepartmentApplicants;
     private Long selectedDepartmentApplicants;
+    private EligibilityCriteriaDTO eligibilityCriteria;
 }

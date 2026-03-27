@@ -24,6 +24,12 @@ public class AdminStudentController {
         return ResponseEntity.ok(ApiResponse.success("Verified students fetched successfully", response));
     }
 
+    @GetMapping("/eligible-for-review")
+    public ResponseEntity<ApiResponse<List<AdminStudentProfileDTO>>> getEligibleForAdminReview() {
+        List<AdminStudentProfileDTO> response = adminStudentService.getEligibleForAdminReview();
+        return ResponseEntity.ok(ApiResponse.success("Students flagged for admin review fetched successfully", response));
+    }
+
     @GetMapping("/{studentId}")
     public ResponseEntity<ApiResponse<AdminStudentProfileDTO>> getStudentById(@PathVariable Long studentId) {
         AdminStudentProfileDTO response = adminStudentService.getStudentById(studentId);

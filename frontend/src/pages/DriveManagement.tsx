@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Plus, Search, X, Edit2, Eye, RefreshCw, ChevronDown } from 'lucide-react';
 import '../styles/dashboard.css';
 import { getJson, postJson, putJson, patchJson } from '../utils/api';
@@ -55,6 +55,8 @@ export default function DriveManagement({ onNavigate }: { onNavigate?: (view: an
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [companyFilter, setCompanyFilter] = useState('');
+  const [openStatusId, setOpenStatusId] = useState<number | null>(null);
+  const statusMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     loadData();
@@ -67,6 +69,28 @@ export default function DriveManagement({ onNavigate }: { onNavigate?: (view: an
     if (companyFilter) result = result.filter(d => d.companyId === parseInt(companyFilter));
     setFilteredDrives(result);
   }, [drives, searchTerm, statusFilter, companyFilter]);
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      if (statusMenuRef.current && !statusMenuRef.current.contains(event.target as Node)) {
+        setOpenStatusId(null);
+      }
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setOpenStatusId(null);
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, []);
 
   async function loadData() {
     try {
@@ -155,6 +179,7 @@ export default function DriveManagement({ onNavigate }: { onNavigate?: (view: an
     setSearchTerm('');
     setStatusFilter('');
     setCompanyFilter('');
+    setOpenStatusId(null);
   }
 
   function getStatusColor(status: string) {
@@ -218,7 +243,7 @@ export default function DriveManagement({ onNavigate }: { onNavigate?: (view: an
           </div>
         </div>
 
-        <div className="card table-card">
+        <div className="card table-card drive-table-card">
           {loading && <div className="skeleton" style={{ minHeight: 300 }} />}
           {error && <div style={{ padding: 20, color: '#b91c1c', fontWeight: 600 }}>{error}</div>}
           {!loading && !error && (
@@ -246,14 +271,37 @@ export default function DriveManagement({ onNavigate }: { onNavigate?: (view: an
                       <td>{drive.role}</td>
                       <td>{drive.ctcLpa} LPA</td>
                       <td>
-                        <div className="status-dropdown">
+                        <div
+                          className="status-dropdown"
+                          ref={openStatusId === drive.id ? statusMenuRef : null}
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <span className={`badge ${getStatusColor(drive.status)}`}>{drive.status}</span>
                           {drive.status !== 'COMPLETED' && (
                             <div className="status-menu">
-                              <ChevronDown size={14} style={{ marginLeft: 4, cursor: 'pointer' }} />
-                              <div className="status-options">
+                              <button
+                                type="button"
+                                className="status-toggle"
+                                aria-label={`Change status for ${drive.title}`}
+                                aria-expanded={openStatusId === drive.id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenStatusId((current) => current === drive.id ? null : drive.id);
+                                }}
+                              >
+                                <ChevronDown size={14} />
+                              </button>
+                              <div className={`status-options ${openStatusId === drive.id ? 'open' : ''}`}>
                                 {['UPCOMING', 'ONGOING', 'COMPLETED'].filter(s => s !== drive.status).map(s => (
-                                  <button key={s} onClick={() => handleStatusChange(drive.id, s)}>
+                                  <button
+                                    key={s}
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenStatusId(null);
+                                      handleStatusChange(drive.id, s);
+                                    }}
+                                  >
                                     {s}
                                   </button>
                                 ))}
@@ -264,11 +312,11 @@ export default function DriveManagement({ onNavigate }: { onNavigate?: (view: an
                       </td>
                       <td>{drive.createdAt ? new Date(drive.createdAt).toLocaleDateString() : '–'}</td>
                       <td>
-                        <div className="action-buttons">
-                          <button className="icon-btn view" onClick={() => openModal(drive, true)} title="View">
+                        <div className="action-buttons" onClick={(e) => e.stopPropagation()}>
+                          <button className="icon-btn view" type="button" onClick={() => openModal(drive, true)} title="View">
                             <Eye size={14} />
                           </button>
-                          <button className="icon-btn edit" onClick={() => openModal(drive)} title="Edit">
+                          <button className="icon-btn edit" type="button" onClick={() => openModal(drive)} title="Edit">
                             <Edit2 size={14} />
                           </button>
                         </div>

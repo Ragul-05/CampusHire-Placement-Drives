@@ -896,6 +896,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  overflow: visible;
 }
 
 .status-menu {
@@ -904,14 +905,33 @@
   align-items: center;
 }
 
-.status-menu:hover .status-options {
-  display: block;
+.status-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.status-toggle:hover,
+.status-toggle[aria-expanded="true"] {
+  background: #eef2ff;
+  color: #1d4ed8;
 }
 
 .status-options {
-  display: none;
   position: absolute;
-  top: 100%;
+  right: 0;
+  bottom: calc(100% + 8px);
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
   right: 0;
   background: #fff;
   border: 1px solid var(--border);
@@ -921,6 +941,10 @@
   min-width: 120px;
   margin-top: 4px;
   animation: slideDown 0.2s ease;
+}
+
+.status-options.open {
+  display: flex;
 }
 
 @keyframes slideDown {
@@ -951,6 +975,11 @@
 
 .status-options button:last-child {
   border-radius: 0 0 8px 8px;
+}
+
+.drive-table-card:hover {
+  transform: none;
+  box-shadow: var(--shadow-sm);
 }
 
 .icon-btn.view {

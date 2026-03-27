@@ -22,6 +22,7 @@ public class StudentDriveService {
     @Autowired private PlacementDriveRepository placementDriveRepository;
     @Autowired private StudentProfileRepository  studentProfileRepository;
     @Autowired private DriveApplicationRepository driveApplicationRepository;
+    @Autowired private StudentProfileService studentProfileService;
 
     @Transactional(readOnly = true)
     public List<PlacementDriveDto> getVisibleDrives(String email) {
@@ -39,6 +40,7 @@ public class StudentDriveService {
 
         boolean isVerified = profile.getVerificationStatus() != null
                 && profile.getVerificationStatus().name().equals("VERIFIED");
+        boolean placementEligible = Boolean.TRUE.equals(profile.getIsEligibleForPlacements());
 
         return drives.stream().map(drive -> {
             boolean isEligible = true;
@@ -48,6 +50,9 @@ public class StudentDriveService {
             if (!isVerified) {
                 isEligible = false;
                 ineligibilityReason = "Your profile must be verified before you can apply.";
+            } else if (!placementEligible) {
+                isEligible = false;
+                ineligibilityReason = "Your profile is not yet marked eligible by faculty.";
             } else {
                 EligibilityCriteria ec = drive.getEligibilityCriteria();
                 AcademicRecord   ar = profile.getAcademicRecord();
@@ -76,6 +81,26 @@ public class StudentDriveService {
                             && (sd.getXiiMarksPercentage() == null || sd.getXiiMarksPercentage() < ec.getMinXiiMarks())) {
                         isEligible = false;
                         ineligibilityReason = "12th marks " + sd.getXiiMarksPercentage() + "% < required " + ec.getMinXiiMarks() + "%";
+                    } else if (ec.getGraduationYear() != null && ar.getUgYearOfPass() != null 
+                            && !ar.getUgYearOfPass().equals(ec.getGraduationYear())) {
+                        isEligible = false;
+                        ineligibilityReason = "Graduation year " + ar.getUgYearOfPass() + " does not match required " + ec.getGraduationYear();
+                    }
+
+                    // Skill matching
+                    if (isEligible && ec.getRequiredSkills() != null && !ec.getRequiredSkills().isEmpty()) {
+                        java.util.Set<String> studentSkills = profile.getSkills().stream()
+                                .map(s -> s.getSkillName().toLowerCase().trim())
+                                .collect(java.util.stream.Collectors.toSet());
+                        
+                        java.util.List<String> missingSkills = ec.getRequiredSkills().stream()
+                                .filter(s -> !studentSkills.contains(s.toLowerCase().trim()))
+                                .collect(java.util.stream.Collectors.toList());
+                        
+                        if (!missingSkills.isEmpty()) {
+                            isEligible = false;
+                            ineligibilityReason = "Missing required skills: " + String.join(", ", missingSkills);
+                        }
                     }
 
                     // Department check
@@ -89,6 +114,14 @@ public class StudentDriveService {
                             ineligibilityReason = "Your department is not eligible for this drive.";
                         }
                     }
+                }
+
+                // BUG 6: Profile Completion Validation (min 80%)
+                double completion = studentProfileService.calculateCompletionPercentage(profile);
+                if (completion < 80.0) {
+                    isEligible = false;
+                    ineligibilityReason = (ineligibilityReason == null ? "" : ineligibilityReason + " ") + 
+                        "Profile is only " + String.format("%.1f", completion) + "% complete (minimum 80% required).";
                 }
             }
 

@@ -2,9 +2,12 @@ package com.example.backend.Services;
 
 import com.example.backend.DTOs.Faculty.FacultyApplicationDTO;
 import com.example.backend.DTOs.Faculty.FacultyDriveDTO;
+import com.example.backend.DTOs.Faculty.EligibilityCriteriaDTO;
 import com.example.backend.Exceptions.ResourceNotFoundException;
 import com.example.backend.Exceptions.UnauthorizedActionException;
+import com.example.backend.Models.Department;
 import com.example.backend.Models.DriveApplication;
+import com.example.backend.Models.EligibilityCriteria;
 import com.example.backend.Models.PlacementDrive;
 import com.example.backend.Models.User;
 import com.example.backend.Models.enums.ApplicationStage;
@@ -69,8 +72,22 @@ public class FacultyDriveService {
                     .status(drive.getStatus().name())
                     .totalDepartmentApplicants(totalApplicants)
                     .selectedDepartmentApplicants(selectedApplicants)
+                    .eligibilityCriteria(mapCriteriaToDTO(drive.getEligibilityCriteria()))
                     .build();
         }).collect(Collectors.toList());
+    }
+
+    private EligibilityCriteriaDTO mapCriteriaToDTO(EligibilityCriteria ec) {
+        if (ec == null) return null;
+        return EligibilityCriteriaDTO.builder()
+                .minCgpa(ec.getMinCgpa())
+                .maxStandingArrears(ec.getMaxStandingArrears())
+                .maxHistoryOfArrears(ec.getMaxHistoryOfArrears())
+                .allowedDepartments(ec.getAllowedDepartments() != null ?
+                        ec.getAllowedDepartments().stream().map(Department::getName).collect(Collectors.toList()) : null)
+                .allowedGraduationYears(ec.getGraduationYear() != null ? List.of(ec.getGraduationYear()) : null)
+                .requiredSkills(ec.getRequiredSkills())
+                .build();
     }
 
     public List<FacultyApplicationDTO> getDriveParticipants(Long driveId, String facultyEmail) {

@@ -27,6 +27,9 @@ public class StudentAuthService {
     @Autowired
     private JwtUtils jwtUtils;
 
+    @Autowired
+    private com.example.backend.Repositories.DepartmentRepository departmentRepository;
+
     public AuthResponseDto login(AuthRequestDto request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UnauthorizedException("Invalid email or password"));
@@ -50,7 +53,7 @@ public class StudentAuthService {
     }
 
     @Transactional
-    public void register(AuthRequestDto request, String universityRegNo) {
+    public void register(AuthRequestDto request, String universityRegNo, String departmentCode) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new IllegalArgumentException("Email already exists");
         }
@@ -63,6 +66,8 @@ public class StudentAuthService {
                 .universityRegNo(universityRegNo)
                 .passwordHash(SecurityUtils.hashPassword(request.getPassword()))
                 .role(Role.STUDENT)
+                .department(departmentCode != null ? 
+                    departmentRepository.findByCode(departmentCode).orElse(null) : null)
                 .isActive(true)
                 .build();
 
@@ -72,7 +77,8 @@ public class StudentAuthService {
                 .user(user)
                 .verificationStatus(VerificationStatus.PENDING)
                 .isLocked(false)
-                .isEligibleForPlacements(true)
+                .isEligibleForPlacements(false)
+                .eligibleForAdminReview(false)
                 .interestedOnPlacement(true)
                 .isPlaced(false)
                 .numberOfOffers(0)

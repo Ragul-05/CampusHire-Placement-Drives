@@ -1,8 +1,11 @@
 package com.example.backend.Repositories;
 
 import com.example.backend.Models.PlacementDrive;
+import com.example.backend.Models.enums.DriveStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
 
 @Repository
 public interface PlacementDriveRepository extends JpaRepository<PlacementDrive, Long> {
@@ -31,4 +34,6 @@ public interface PlacementDriveRepository extends JpaRepository<PlacementDrive, 
     java.util.List<PlacementDrive> findByStatusInAndAllowedDepartmentId(
             @org.springframework.data.repository.query.Param("statuses") java.util.List<com.example.backend.Models.enums.DriveStatus> statuses,
             @org.springframework.data.repository.query.Param("departmentId") Long departmentId);
+
+    long countByStatusIn(List<DriveStatus> ongoing);
 }

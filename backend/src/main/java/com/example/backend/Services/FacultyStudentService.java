@@ -46,8 +46,13 @@ public class FacultyStudentService {
         List<StudentProfile> students = studentProfileRepository.findByUserDepartmentId(departmentId);
 
         if (statusFilter != null && !statusFilter.isEmpty()) {
+            final String status = statusFilter.toUpperCase();
             students = students.stream()
-                    .filter(s -> s.getVerificationStatus().name().equalsIgnoreCase(statusFilter))
+                    .filter(s -> {
+                        VerificationStatus v = s.getVerificationStatus();
+                        String current = v != null ? v.name() : VerificationStatus.PENDING.name();
+                        return current.equalsIgnoreCase(status);
+                    })
                     .collect(Collectors.toList());
         }
 
@@ -81,6 +86,14 @@ public class FacultyStudentService {
         }
 
         student.setVerificationStatus(request.getStatus());
+        // Only mark eligible when verified; reset otherwise
+        if (request.getStatus() == VerificationStatus.VERIFIED) {
+            student.setIsEligibleForPlacements(true);
+            student.setEligibleForAdminReview(false);
+        } else {
+            student.setIsEligibleForPlacements(false);
+            student.setEligibleForAdminReview(false);
+        }
         studentProfileRepository.save(student);
 
         // Record verification history
@@ -93,6 +106,22 @@ public class FacultyStudentService {
                 .build();
 
         profileVerificationRepository.save(verification);
+    }
+
+    public void sendStudentToAdmin(Long studentId, String facultyEmail) {
+        User faculty = getAuthenticatedFaculty(facultyEmail);
+        StudentProfile student = studentProfileRepository.findById(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
+
+        if (!student.getUser().getDepartment().getId().equals(faculty.getDepartment().getId())) {
+            throw new UnauthorizedActionException("Cannot send student from another department");
+        }
+        if (student.getVerificationStatus() != VerificationStatus.VERIFIED) {
+            throw new IllegalArgumentException("Only verified profiles can be sent to admin");
+        }
+
+        student.setEligibleForAdminReview(true);
+        studentProfileRepository.save(student);
     }
 
     public List<ProfileVerification> getVerificationHistory(String facultyEmail) {
@@ -112,6 +141,7 @@ public class FacultyStudentService {
                 .isLocked(s.getIsLocked() != null ? s.getIsLocked() : false)
                 .isEligibleForPlacements(
                         s.getIsEligibleForPlacements() != null ? s.getIsEligibleForPlacements() : false)
+                .eligibleForAdminReview(s.getEligibleForAdminReview() != null ? s.getEligibleForAdminReview() : false)
                 .isPlaced(s.getIsPlaced() != null ? s.getIsPlaced() : false)
                 .numberOfOffers(s.getNumberOfOffers() != null ? s.getNumberOfOffers() : 0)
                 .highestPackageLpa(s.getHighestPackageLpa() != null ? s.getHighestPackageLpa() : 0.0)

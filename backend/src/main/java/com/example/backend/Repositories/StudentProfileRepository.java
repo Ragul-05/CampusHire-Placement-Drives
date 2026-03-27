@@ -77,4 +77,9 @@ public interface StudentProfileRepository extends JpaRepository<StudentProfile, 
             Long departmentId, com.example.backend.Models.enums.VerificationStatus status);
 
     long countByUserDepartmentIdAndIsEligibleForPlacementsTrue(Long departmentId);
+
+    java.util.List<StudentProfile> findByVerificationStatusAndEligibleForAdminReviewTrue(
+            com.example.backend.Models.enums.VerificationStatus status);
+
+    java.util.List<StudentProfile> findByEligibleForAdminReviewTrue();
 }

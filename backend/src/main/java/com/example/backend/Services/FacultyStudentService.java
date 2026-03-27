@@ -190,7 +190,12 @@ public class FacultyStudentService {
                 : VerificationStatus.PENDING;
 
         if (status == VerificationStatus.PENDING) {
-            return Boolean.TRUE.equals(student.getSubmittedForVerification());
+            if (Boolean.TRUE.equals(student.getSubmittedForVerification())) {
+                return true;
+            }
+
+            // Fallback for older student records created before the explicit submit flag existed.
+            return studentProfileService.calculateCompletionPercentage(student) >= 80.0;
         }
 
         return true;

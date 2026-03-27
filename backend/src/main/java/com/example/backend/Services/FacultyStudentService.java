@@ -6,6 +6,7 @@ import com.example.backend.Exceptions.ResourceNotFoundException;
 import com.example.backend.Exceptions.UnauthorizedActionException;
 import com.example.backend.Models.ProfileVerification;
 import com.example.backend.Models.StudentProfile;
+import com.example.backend.Models.StudentSkill;
 import com.example.backend.Models.User;
 import com.example.backend.Models.enums.VerificationStatus;
 import com.example.backend.Repositories.ProfileVerificationRepository;
@@ -13,6 +14,7 @@ import com.example.backend.Repositories.StudentProfileRepository;
 import com.example.backend.Repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -30,6 +32,9 @@ public class FacultyStudentService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private StudentProfileService studentProfileService;
+
     private User getAuthenticatedFaculty(String email) {
         User faculty = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Faculty not found"));
@@ -39,11 +44,15 @@ public class FacultyStudentService {
         return faculty;
     }
 
+    @Transactional(readOnly = true)
     public List<FacultyStudentDTO> getDepartmentStudents(String facultyEmail, String statusFilter) {
         User faculty = getAuthenticatedFaculty(facultyEmail);
         Long departmentId = faculty.getDepartment().getId();
 
         List<StudentProfile> students = studentProfileRepository.findByUserDepartmentId(departmentId);
+        students = students.stream()
+                .filter(this::shouldBeVisibleToFaculty)
+                .collect(Collectors.toList());
 
         if (statusFilter != null && !statusFilter.isEmpty()) {
             final String status = statusFilter.toUpperCase();
@@ -59,6 +68,7 @@ public class FacultyStudentService {
         return students.stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public FacultyStudentDTO getStudentProfile(Long studentId, String facultyEmail) {
         User faculty = getAuthenticatedFaculty(facultyEmail);
         StudentProfile student = studentProfileRepository.findById(studentId)
@@ -86,6 +96,7 @@ public class FacultyStudentService {
         }
 
         student.setVerificationStatus(request.getStatus());
+        student.setSubmittedForVerification(false);
         // Only mark eligible when verified; reset otherwise
         if (request.getStatus() == VerificationStatus.VERIFIED) {
             student.setIsEligibleForPlacements(true);
@@ -130,12 +141,22 @@ public class FacultyStudentService {
     }
 
     private FacultyStudentDTO mapToDTO(StudentProfile s) {
+        String fullName = s.getUser().getEmail();
+        if (s.getPersonalDetails() != null && s.getPersonalDetails().getFirstName() != null
+                && !s.getPersonalDetails().getFirstName().isBlank()) {
+            String firstName = s.getPersonalDetails().getFirstName().trim();
+            String lastName = s.getPersonalDetails().getLastName() != null
+                    ? s.getPersonalDetails().getLastName().trim()
+                    : "";
+            fullName = (firstName + " " + lastName).trim();
+        }
+
         return FacultyStudentDTO.builder()
                 .id(s.getId())
                 .userId(s.getUser().getId())
                 .rollNo(s.getRollNo())
                 .batch(s.getBatch())
-                .name(s.getUser().getEmail()) // Defaulting to email as name if missing name
+                .name(fullName)
                 .email(s.getUser().getEmail())
                 .verificationStatus(s.getVerificationStatus() != null ? s.getVerificationStatus().name() : "PENDING")
                 .isLocked(s.getIsLocked() != null ? s.getIsLocked() : false)
@@ -148,6 +169,30 @@ public class FacultyStudentService {
                 .cgpa(s.getAcademicRecord() != null ? s.getAcademicRecord().getCgpa() : null)
                 .standingArrears(s.getAcademicRecord() != null ? s.getAcademicRecord().getStandingArrears() : 0)
                 .historyOfArrears(s.getAcademicRecord() != null ? s.getAcademicRecord().getHistoryOfArrears() : 0)
+                .hasApplied(false)
+                .department(s.getUser().getDepartment() != null ? s.getUser().getDepartment().getName() : null)
+                .graduationYear(s.getAcademicRecord() != null ? s.getAcademicRecord().getUgYearOfPass() : null)
+                .profileCompletionPercentage(studentProfileService.calculateCompletionPercentage(s))
+                .phoneNumber(s.getContactDetails() != null ? s.getContactDetails().getStudentMobile1() : null)
+                .linkedinUrl(s.getProfessionalProfile() != null ? s.getProfessionalProfile().getLinkedinProfileUrl() : null)
+                .githubUrl(s.getProfessionalProfile() != null ? s.getProfessionalProfile().getGithubProfileUrl() : null)
+                .skills(s.getSkills() != null
+                        ? s.getSkills().stream()
+                                .map(StudentSkill::getSkillName)
+                                .collect(Collectors.toList())
+                        : List.of())
                 .build();
+    }
+
+    private boolean shouldBeVisibleToFaculty(StudentProfile student) {
+        VerificationStatus status = student.getVerificationStatus() != null
+                ? student.getVerificationStatus()
+                : VerificationStatus.PENDING;
+
+        if (status == VerificationStatus.PENDING) {
+            return Boolean.TRUE.equals(student.getSubmittedForVerification());
+        }
+
+        return true;
     }
 }

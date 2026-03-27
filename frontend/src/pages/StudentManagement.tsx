@@ -1,7 +1,7 @@
 import { useEffect, useState, Fragment } from 'react';
 import { Search, Filter, Eye, Lock, Unlock, X, User } from 'lucide-react';
 import '../styles/dashboard.css';
-import { getJson, patchJson } from '../utils/api';
+import { facultyUrl, getJson, patchJson } from '../utils/api';
 import AdminLayout from '../components/AdminLayout';
 import FacultyLayout from '../components/FacultyLayout';
 import ExportButton from '../components/ExportButton';
@@ -22,6 +22,20 @@ type Student = {
   cgpa?: number;
 };
 
+type FacultyStudent = {
+  id: number;
+  email: string;
+  rollNo: string;
+  batch?: string;
+  department?: string;
+  verificationStatus: 'PENDING' | 'VERIFIED' | 'REJECTED';
+  isLocked?: boolean;
+  isPlaced?: boolean;
+  highestPackageLpa?: number | null;
+  name?: string;
+  cgpa?: number | null;
+};
+
 type Department = {
   id: number;
   name: string;
@@ -29,12 +43,14 @@ type Department = {
 };
 
 export default function StudentManagement({ onNavigate }: { onNavigate?: (view: any) => void }) {
+  const userRole = localStorage.getItem('role');
+  const isFacultyView = userRole === 'FACULTY';
   const [students, setStudents] = useState<Student[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
 
   const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState('');
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -60,12 +76,45 @@ export default function StudentManagement({ onNavigate }: { onNavigate?: (view: 
   async function loadData() {
     try {
       setLoading(true);
-      const [studentsRes, deptsRes] = await Promise.all([
-        getJson<Student[]>('/api/admin/students/search?query='),
-        getJson<Department[]>('/api/admin/departments')
-      ]);
-      setStudents(studentsRes.data || []);
-      setDepartments(deptsRes.data || []);
+      if (isFacultyView) {
+        const studentsRes = await getJson<FacultyStudent[]>(facultyUrl('/api/faculty/students/all'));
+        const normalizedStudents: Student[] = (studentsRes.data || []).map(student => ({
+          id: student.id,
+          email: student.email,
+          rollNo: student.rollNo,
+          batch: student.batch || '',
+          departmentName: student.department || '',
+          verificationStatus: student.verificationStatus,
+          isLocked: !!student.isLocked,
+          isPlaced: !!student.isPlaced,
+          highestPackageLpa: student.highestPackageLpa ?? null,
+          resumeUrl: null,
+          name: student.name || student.email.split('@')[0],
+          cgpa: student.cgpa ?? undefined,
+        }));
+
+        const derivedDepartments: Department[] = Array.from(
+          new Set(
+            normalizedStudents
+              .map(student => student.departmentName)
+              .filter(Boolean)
+          )
+        ).map((name, index) => ({
+          id: index + 1,
+          name,
+          code: name,
+        }));
+
+        setStudents(normalizedStudents);
+        setDepartments(derivedDepartments);
+      } else {
+        const [studentsRes, deptsRes] = await Promise.all([
+          getJson<Student[]>('/api/admin/students/search?query='),
+          getJson<Department[]>('/api/admin/departments')
+        ]);
+        setStudents(studentsRes.data || []);
+        setDepartments(deptsRes.data || []);
+      }
     } catch (err: any) {
       showToast(err?.message || 'Failed to load data', true);
     } finally {
@@ -80,7 +129,8 @@ export default function StudentManagement({ onNavigate }: { onNavigate?: (view: 
     if (searchTerm) {
       filtered = filtered.filter(student =>
         student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.rollNo.toLowerCase().includes(searchTerm.toLowerCase())
+        student.rollNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (student.name || '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -105,6 +155,10 @@ export default function StudentManagement({ onNavigate }: { onNavigate?: (view: 
   }
 
   async function handleToggleLock(studentId: number) {
+    if (isFacultyView) {
+      showToast('Profile locking is managed by Placement HQ.', true);
+      return;
+    }
     try {
       const response = await patchJson<Student>(`/api/admin/students/${studentId}/toggle-lock`);
       const updatedStudent = response.data;
@@ -129,8 +183,8 @@ export default function StudentManagement({ onNavigate }: { onNavigate?: (view: 
   }
 
   function showToast(msg: string, isError = false) {
-    setToast(msg);
-    setTimeout(() => setToast(''), 3000);
+    setToast({ msg, type: isError ? 'error' : 'success' });
+    setTimeout(() => setToast(null), 3000);
   }
 
   function resetFilters() {
@@ -150,7 +204,6 @@ export default function StudentManagement({ onNavigate }: { onNavigate?: (view: 
   }
 
   // Determine which layout to use based on user role
-  const userRole = localStorage.getItem('role');
   const Layout = userRole === 'FACULTY' ? FacultyLayout : AdminLayout;
   const layoutActiveNav = userRole === 'FACULTY' ? 'students' : 'students';
 
@@ -158,8 +211,8 @@ export default function StudentManagement({ onNavigate }: { onNavigate?: (view: 
     <Layout activeNav={layoutActiveNav} onNavigate={onNavigate}>
       <div className="page-container">
         {toast && (
-          <div className={`toast toast-notification ${toast.includes('success') ? 'toast-success' : 'toast-error'}`}>
-            {toast}
+          <div className={`toast toast-notification ${toast.type === 'success' ? 'toast-success' : 'toast-error'}`}>
+            {toast.msg}
           </div>
         )}
 
@@ -222,7 +275,7 @@ export default function StudentManagement({ onNavigate }: { onNavigate?: (view: 
                 <div className="input-group">
                   <Search size={16} color="#94a3b8" />
                   <input
-                    placeholder="Search by name or email..."
+                    placeholder="Search by name, roll number, or email..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
@@ -291,7 +344,7 @@ export default function StudentManagement({ onNavigate }: { onNavigate?: (view: 
                                 <User size={18} />
                               </div>
                               <div>
-                                <div className="student-name">{student.email.split('@')[0]}</div>
+                                <div className="student-name">{student.name || student.email.split('@')[0]}</div>
                                 <div className="student-email">{student.email}</div>
                               </div>
                             </div>
@@ -313,14 +366,20 @@ export default function StudentManagement({ onNavigate }: { onNavigate?: (view: 
                             )}
                           </td>
                           <td>
-                            <label className="toggle-switch" onClick={(e) => e.stopPropagation()}>
-                              <input
-                                type="checkbox"
-                                checked={student.isLocked}
-                                onChange={() => handleToggleLock(student.id)}
-                              />
-                              <span className="toggle-slider"></span>
-                            </label>
+                            {isFacultyView ? (
+                              <span className={`badge ${student.isLocked ? 'warning' : 'success'}`}>
+                                {student.isLocked ? 'Locked' : 'Unlocked'}
+                              </span>
+                            ) : (
+                              <label className="toggle-switch" onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  type="checkbox"
+                                  checked={student.isLocked}
+                                  onChange={() => handleToggleLock(student.id)}
+                                />
+                                <span className="toggle-slider"></span>
+                              </label>
+                            )}
                           </td>
                           <td>
                             <div className="action-buttons">
@@ -334,16 +393,18 @@ export default function StudentManagement({ onNavigate }: { onNavigate?: (view: 
                               >
                                 <Eye size={14} />
                               </button>
-                              <button
-                                className={`icon-btn ${student.isLocked ? 'unlock' : 'lock'}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleToggleLock(student.id);
-                                }}
-                                title={student.isLocked ? 'Unlock Profile' : 'Lock Profile'}
-                              >
-                                {student.isLocked ? <Unlock size={14} /> : <Lock size={14} />}
-                              </button>
+                              {!isFacultyView && (
+                                <button
+                                  className={`icon-btn ${student.isLocked ? 'unlock' : 'lock'}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleLock(student.id);
+                                  }}
+                                  title={student.isLocked ? 'Unlock Profile' : 'Lock Profile'}
+                                >
+                                  {student.isLocked ? <Unlock size={14} /> : <Lock size={14} />}
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -480,19 +541,21 @@ export default function StudentManagement({ onNavigate }: { onNavigate?: (view: 
                 <button className="btn-secondary" onClick={closeViewModal}>
                   Close
                 </button>
-                <button
-                  className="btn-primary"
-                  onClick={() => {
-                    handleToggleLock(selectedStudent.id);
-                    closeViewModal();
-                  }}
-                >
-                  {selectedStudent.isLocked ? (
-                    <><Unlock size={16} /> Unlock Profile</>
-                  ) : (
-                    <><Lock size={16} /> Lock Profile</>
-                  )}
-                </button>
+                {!isFacultyView && (
+                  <button
+                    className="btn-primary"
+                    onClick={() => {
+                      handleToggleLock(selectedStudent.id);
+                      closeViewModal();
+                    }}
+                  >
+                    {selectedStudent.isLocked ? (
+                      <><Unlock size={16} /> Unlock Profile</>
+                    ) : (
+                      <><Lock size={16} /> Lock Profile</>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           </div>

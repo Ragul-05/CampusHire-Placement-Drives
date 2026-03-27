@@ -37,6 +37,9 @@ public class StudentProfile {
     @Enumerated(EnumType.STRING)
     private VerificationStatus verificationStatus;
 
+    @Builder.Default
+    private Boolean submittedForVerification = false;
+
     private Boolean isLocked;
     private Boolean isEligibleForPlacements;
     private Boolean interestedOnPlacement;

@@ -10,9 +10,9 @@ import com.example.backend.Models.StudentProfile;
 import com.example.backend.Models.User;
 import com.example.backend.Models.enums.DriveStatus;
 import com.example.backend.Models.enums.VerificationStatus;
-import com.example.backend.Models.enums.VerificationStatus;
 import com.example.backend.Repositories.DriveApplicationRepository;
 import com.example.backend.Repositories.PlacementDriveRepository;
+import com.example.backend.Repositories.ProfileVerificationRepository;
 import com.example.backend.Repositories.StudentProfileRepository;
 import com.example.backend.Repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +41,12 @@ public class FacultyDashboardService {
     @Autowired
     private FacultyStudentService facultyStudentService;
 
+    @Autowired
+    private ProfileVerificationRepository profileVerificationRepository;
+
+    @Autowired
+    private PlacementEligibilityService placementEligibilityService;
+
     public FacultyDashboardStatsDTO getDepartmentStats(String facultyEmail) {
         User faculty = userRepository.findByEmail(facultyEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Faculty not found"));
@@ -55,12 +61,12 @@ public class FacultyDashboardService {
         long totalStudents = studentProfileRepository.countByUserDepartmentId(departmentId);
         long verifiedStudents = studentProfileRepository.countByUserDepartmentIdAndVerificationStatus(
                 departmentId, VerificationStatus.VERIFIED);
-        long pendingVerifications = studentProfileRepository.countByUserDepartmentIdAndVerificationStatus(
-                departmentId, VerificationStatus.PENDING);
+        long pendingVerifications = facultyStudentService.getDepartmentStudents(facultyEmail, "PENDING").size();
         long rejectedStudents = studentProfileRepository.countByUserDepartmentIdAndVerificationStatus(
                 departmentId, VerificationStatus.REJECTED);
         long placedStudents = studentProfileRepository.countByUserDepartmentIdAndIsPlacedTrue(departmentId);
         long eligibleForDrives = studentProfileRepository.countByUserDepartmentIdAndIsEligibleForPlacementsTrue(departmentId);
+        long activeApplications = driveApplicationRepository.findByStudentProfileUserDepartmentId(departmentId).size();
 
         long ongoingDrives = placementDriveRepository.countByAllowedDepartmentIdAndStatus(
                 departmentId, DriveStatus.ONGOING);
@@ -91,7 +97,7 @@ public class FacultyDashboardService {
                 .placedStudents(placedStudents)
                 .placementPercentage(placementPercentage)
                 .ongoingDrives(ongoingDrives)
-                .activeApplications(0L)
+                .activeApplications(activeApplications)
                 .statusDistribution(distribution)
                 .monthlyTrend(monthlyTrend)
                 .driveEligibility(driveEligibility)
@@ -106,9 +112,13 @@ public class FacultyDashboardService {
             LocalDate monthDate = now.minusMonths(i);
             String monthName = monthDate.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
 
-            // For now, generate sample data
-            // TODO: Implement actual database query to count verifications by month
-            long count = (long) (Math.random() * 20 + 5);
+            long count = profileVerificationRepository.findByStudentProfileUserDepartmentId(departmentId)
+                    .stream()
+                    .filter(v -> v.getVerifiedAt() != null)
+                    .filter(v -> v.getStatus() == VerificationStatus.VERIFIED)
+                    .filter(v -> v.getVerifiedAt().getYear() == monthDate.getYear()
+                            && v.getVerifiedAt().getMonthValue() == monthDate.getMonthValue())
+                    .count();
 
             trends.add(FacultyDashboardStatsDTO.MonthlyTrend.builder()
                     .month(monthName)
@@ -144,34 +154,8 @@ public class FacultyDashboardService {
         List<StudentProfile> verifiedStudents = studentProfileRepository
                 .findByUserDepartmentIdAndVerificationStatus(departmentId, VerificationStatus.VERIFIED);
 
-        if (drive.getEligibilityCriteria() == null) {
-            return 0;
-        }
-
-        EligibilityCriteria criteria = drive.getEligibilityCriteria();
-
         return verifiedStudents.stream()
-                .filter(student -> {
-                    if (student.getAcademicRecord() == null) return false;
-
-                    // Check CGPA
-                    if (student.getAcademicRecord().getCgpa() < criteria.getMinCgpa()) return false;
-
-                    // Check standing arrears
-                    if (student.getAcademicRecord().getStandingArrears() > criteria.getMaxStandingArrears()) return false;
-
-                    // Check history of arrears
-                    if (student.getAcademicRecord().getHistoryOfArrears() > criteria.getMaxHistoryOfArrears()) return false;
-
-                    // Check graduation year
-                    if (criteria.getGraduationYear() != null &&
-                        !criteria.getGraduationYear().equals(student.getAcademicRecord().getUgYearOfPass())) return false;
-
-                    // Check if student is eligible for placements
-                    if (!Boolean.TRUE.equals(student.getIsEligibleForPlacements())) return false;
-
-                    return true;
-                })
+                .filter(student -> placementEligibilityService.evaluate(student, drive).isEligible())
                 .count();
     }
 

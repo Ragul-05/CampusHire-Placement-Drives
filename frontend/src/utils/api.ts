@@ -1,5 +1,20 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
 
+function redirectToLoginForStoredRole() {
+  const role = localStorage.getItem('role');
+  localStorage.removeItem('token');
+  localStorage.removeItem('role');
+  localStorage.removeItem('email');
+  localStorage.removeItem('name');
+
+  if (typeof window === 'undefined') return;
+  if (role === 'STUDENT') {
+    window.location.href = '/student/login';
+    return;
+  }
+  window.location.href = '/login';
+}
+
 export type ApiResponse<T> = {
   success: boolean;
   message: string;
@@ -14,6 +29,9 @@ export async function apiJson<T>(path: string, options: { method?: string; body?
     'Accept': 'application/json'
   };
   const token = localStorage.getItem('token');
+  if (auth && !token) {
+    throw new Error('Your session is missing. Please log in again.');
+  }
   if (auth && token) headers['Authorization'] = `Bearer ${token}`;
 
   const res = await fetch(`${API_BASE}${path}`, {
@@ -23,6 +41,11 @@ export async function apiJson<T>(path: string, options: { method?: string; body?
   });
 
   const text = await res.text();
+  if ((res.status === 401 || res.status === 403) && auth) {
+    redirectToLoginForStoredRole();
+    throw new Error('Your session has expired or is invalid. Please log in again.');
+  }
+
   if (!text.trim()) {
     if (!res.ok) {
       throw new Error(`Request failed with status ${res.status}`);

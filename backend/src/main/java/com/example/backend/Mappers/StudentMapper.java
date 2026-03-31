@@ -84,6 +84,10 @@ public class StudentMapper {
         if (profile.getAcademicRecord() != null) {
             AcademicRecord ar = profile.getAcademicRecord();
             StudentProfileDto.AcademicRecordDto arDto = new StudentProfileDto.AcademicRecordDto();
+            arDto.setDepartmentCode(
+                    profile.getUser() != null && profile.getUser().getDepartment() != null
+                            ? profile.getUser().getDepartment().getCode()
+                            : null);
             arDto.setUgYearOfPass(ar.getUgYearOfPass());
             arDto.setAdmissionQuota(ar.getAdmissionQuota());
             arDto.setMediumOfInstruction(ar.getMediumOfInstruction());

@@ -81,6 +81,7 @@ public class StudentProfileDto {
     /* ── 3. Academic Record ── */
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class AcademicRecordDto {
+        private String  departmentCode;
         private Integer ugYearOfPass;
         private String  admissionQuota;
         private String  mediumOfInstruction;

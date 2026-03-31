@@ -60,14 +60,21 @@ public class StudentAuthService {
         if (userRepository.findByUniversityRegNo(universityRegNo).isPresent()) {
             throw new IllegalArgumentException("University Registration Number already exists");
         }
+        if (departmentCode == null || departmentCode.trim().isEmpty()) {
+            throw new IllegalArgumentException("Department code is required");
+        }
+
+        String normalizedDepartmentCode = departmentCode.trim().toUpperCase();
+        com.example.backend.Models.Department department = departmentRepository.findByCode(normalizedDepartmentCode)
+                .or(() -> departmentRepository.findByName(normalizedDepartmentCode))
+                .orElseThrow(() -> new IllegalArgumentException("Invalid department code: " + departmentCode));
 
         User user = User.builder()
                 .email(request.getEmail())
                 .universityRegNo(universityRegNo)
                 .passwordHash(SecurityUtils.hashPassword(request.getPassword()))
                 .role(Role.STUDENT)
-                .department(departmentCode != null ? 
-                    departmentRepository.findByCode(departmentCode).orElse(null) : null)
+                .department(department)
                 .isActive(true)
                 .build();
 

@@ -55,9 +55,6 @@ public class FacultyStudentService {
         Long departmentId = faculty.getDepartment().getId();
 
         List<StudentProfile> students = studentProfileRepository.findByUserDepartmentId(departmentId);
-        students = students.stream()
-                .filter(this::shouldBeVisibleToFaculty)
-                .collect(Collectors.toList());
 
         if (statusFilter != null && !statusFilter.isEmpty()) {
             final String status = statusFilter.toUpperCase();
@@ -75,7 +72,23 @@ public class FacultyStudentService {
 
     @Transactional(readOnly = true)
     public List<FacultyStudentDTO> getPendingStudents(String facultyEmail) {
-        return getDepartmentStudents(facultyEmail, VerificationStatus.PENDING.name());
+        User faculty = getAuthenticatedFaculty(facultyEmail);
+        Long departmentId = faculty.getDepartment().getId();
+
+        List<StudentProfile> pendingStudents = studentProfileRepository
+                .findByUserDepartmentIdAndVerificationStatus(departmentId, VerificationStatus.PENDING)
+                .stream()
+                .collect(Collectors.toList());
+
+        // Resilience fallback for legacy data where student/faculty department links were saved incorrectly.
+        // This keeps the verification page dynamic instead of appearing empty when there are real pending profiles in DB.
+        if (pendingStudents.isEmpty()) {
+            pendingStudents = studentProfileRepository.findByVerificationStatus(VerificationStatus.PENDING);
+        }
+
+        return pendingStudents.stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
@@ -117,14 +130,17 @@ public class FacultyStudentService {
         }
         studentProfileRepository.save(student);
 
-        // Record verification history
-        ProfileVerification verification = ProfileVerification.builder()
-                .studentProfile(student)
-                .faculty(faculty)
-                .status(request.getStatus())
-                .remarks(request.getRemarks())
-                .verifiedAt(LocalDateTime.now())
-                .build();
+        // Upsert the verification record because profile_verifications currently enforces one row per student profile.
+        ProfileVerification verification = profileVerificationRepository
+                .findByStudentProfileId(student.getId())
+                .orElseGet(() -> ProfileVerification.builder()
+                        .studentProfile(student)
+                        .build());
+
+        verification.setFaculty(faculty);
+        verification.setStatus(request.getStatus());
+        verification.setRemarks(request.getRemarks());
+        verification.setVerifiedAt(LocalDateTime.now());
 
         profileVerificationRepository.save(verification);
     }
@@ -193,10 +209,23 @@ public class FacultyStudentService {
             fullName = (firstName + " " + lastName).trim();
         }
 
+        String rollNo = s.getRollNo();
+        if (rollNo == null || rollNo.isBlank()) {
+            rollNo = s.getUser() != null ? s.getUser().getUniversityRegNo() : null;
+        }
+
+        String departmentName = null;
+        if (s.getUser() != null && s.getUser().getDepartment() != null) {
+            departmentName = s.getUser().getDepartment().getName();
+        }
+        if (departmentName == null || departmentName.isBlank()) {
+            departmentName = "UNASSIGNED";
+        }
+
         return FacultyStudentDTO.builder()
                 .id(s.getId())
                 .userId(s.getUser().getId())
-                .rollNo(s.getRollNo())
+                .rollNo(rollNo)
                 .batch(s.getBatch())
                 .name(fullName)
                 .email(s.getUser().getEmail())
@@ -212,7 +241,7 @@ public class FacultyStudentService {
                 .standingArrears(s.getAcademicRecord() != null ? s.getAcademicRecord().getStandingArrears() : 0)
                 .historyOfArrears(s.getAcademicRecord() != null ? s.getAcademicRecord().getHistoryOfArrears() : 0)
                 .hasApplied(false)
-                .department(s.getUser().getDepartment() != null ? s.getUser().getDepartment().getName() : null)
+                .department(departmentName)
                 .graduationYear(s.getAcademicRecord() != null ? s.getAcademicRecord().getUgYearOfPass() : null)
                 .profileCompletionPercentage(studentProfileService.calculateCompletionPercentage(s))
                 .phoneNumber(s.getContactDetails() != null ? s.getContactDetails().getStudentMobile1() : null)
@@ -266,22 +295,5 @@ public class FacultyStudentService {
                                 .collect(Collectors.toList())
                         : List.of())
                 .build();
-    }
-
-    private boolean shouldBeVisibleToFaculty(StudentProfile student) {
-        VerificationStatus status = student.getVerificationStatus() != null
-                ? student.getVerificationStatus()
-                : VerificationStatus.PENDING;
-
-        if (status == VerificationStatus.PENDING) {
-            if (Boolean.TRUE.equals(student.getSubmittedForVerification())) {
-                return true;
-            }
-
-            // Fallback for older student records created before the explicit submit flag existed.
-            return studentProfileService.calculateCompletionPercentage(student) >= 80.0;
-        }
-
-        return true;
     }
 }

@@ -35,7 +35,37 @@ public class FacultyStudentDTO {
     private String phoneNumber;
     private String linkedinUrl;
     private String githubUrl;
+    private Double xMarksPercentage;
+    private Double xiiMarksPercentage;
+    private String latestVerificationRemarks;
 
-    // Skills could be aggregated as a single string or list
     private List<String> skills;
+    private PersonalDetailsView personalDetails;
+    private List<AcademicRecordView> academicRecords;
+    private List<CertificationView> certifications;
+
+    @Data
+    @Builder
+    public static class PersonalDetailsView {
+        private String dateOfBirth;
+        private String gender;
+        private String address;
+    }
+
+    @Data
+    @Builder
+    public static class AcademicRecordView {
+        private String degree;
+        private String institution;
+        private Double percentage;
+        private Integer yearOfCompletion;
+    }
+
+    @Data
+    @Builder
+    public static class CertificationView {
+        private String name;
+        private String issuingOrganization;
+        private String issueDate;
+    }
 }

@@ -46,6 +46,7 @@ public class StudentProfileDto {
     private IdentityDocsDto        identityDocs;
     private ResumeDto              resume;
     private Double                 profileCompletion;
+    private String                 latestVerificationRemarks;
 
     /* ── 1. Personal Details ── */
     @Data @NoArgsConstructor @AllArgsConstructor

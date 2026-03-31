@@ -4,6 +4,7 @@ import com.example.backend.Models.enums.ApplicationStage;
 import lombok.Builder;
 import lombok.Data;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -18,4 +19,9 @@ public class FacultyApplicationDTO {
     private ApplicationStage stage;
     private LocalDateTime appliedAt;
     private LocalDateTime lastUpdatedAt;
+    private Double cgpa;
+    private List<String> skills;
+    private String verificationStatus;
+    private Boolean isEligibleForPlacements;
+    private Boolean facultyApproved;
 }

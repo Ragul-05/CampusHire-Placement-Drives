@@ -151,20 +151,19 @@ function Field({ label, required, error, children }: { label: string; required?:
 }
 
 function Input({ disabled, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { disabled?: boolean }) {
-  return <input className={`sp-input${disabled?' sp-disabled':''}`} disabled={disabled} {...props} />;
+  return <input className={`sp-input${disabled?' sp-disabled':''}`} disabled={disabled} {...props} value={props.value ?? ''} />;
 }
 function Select({ disabled, children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement> & { disabled?: boolean }) {
-  return <select className={`sp-input${disabled?' sp-disabled':''}`} disabled={disabled} {...props}>{children}</select>;
+  return <select className={`sp-input${disabled?' sp-disabled':''}`} disabled={disabled} {...props} value={props.value ?? ''}>{children}</select>;
 }
 function Textarea({ disabled, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { disabled?: boolean }) {
-  return <textarea className={`sp-input sp-textarea${disabled?' sp-disabled':''}`} disabled={disabled} {...props} />;
+  return <textarea className={`sp-input sp-textarea${disabled?' sp-disabled':''}`} disabled={disabled} {...props} value={props.value ?? ''} />;
 }
 
 /* ─────────────────────────────────────────────
    MAIN PAGE
 ───────────────────────────────────────────── */
 export default function StudentProfile() {
-  const email = localStorage.getItem('email') || '';
   const [profile,  setProfile]  = useState<ProfileDto | null>(null);
   const [loading,  setLoading]  = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>('personal');
@@ -187,7 +186,7 @@ export default function StudentProfile() {
   const loadProfile = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await getJson<ProfileDto>(`/api/student/profile?email=${encodeURIComponent(email)}`);
+      const res = await getJson<ProfileDto>('/api/student/profile');
       const p = res.data;
       setProfile(p);
       if (p.personalDetails)   setPersonal({ ...defPersonal(),   ...p.personalDetails });
@@ -202,7 +201,7 @@ export default function StudentProfile() {
       if (p.identityDocs)      setIdentity({  ...defIdentity(),  ...p.identityDocs });
     } catch { setToast({ msg: 'Failed to load profile', type: 'error' }); }
     finally { setLoading(false); }
-  }, [email]);
+  }, []);
 
   useEffect(() => { loadProfile(); }, [loadProfile]);
 
@@ -215,16 +214,15 @@ export default function StudentProfile() {
     setSaving(true);
     setErrors({});
     try {
-      const q = `?email=${encodeURIComponent(email)}`;
-      if (activeTab === 'personal')       await putJson(`/api/student/profile/personal${q}`,       sanitize(personal));
-      if (activeTab === 'contact')        await putJson(`/api/student/profile/contact${q}`,        sanitize(contact));
-      if (activeTab === 'academic')       await putJson(`/api/student/profile/academic${q}`,       sanitize(academic));
-      if (activeTab === 'schooling')      await putJson(`/api/student/profile/schooling${q}`,      sanitize(schooling));
-      if (activeTab === 'professional')   await putJson(`/api/student/profile/professional${q}`,   sanitize(professional));
-      if (activeTab === 'certifications') await putJson(`/api/student/profile/certifications${q}`, sanitize(certifications));
-      if (activeTab === 'skills')         await putJson(`/api/student/profile/skills${q}`,         sanitize(skills));
-      if (activeTab === 'resume')         await putJson(`/api/student/profile/resume${q}`,         sanitize(resume));
-      if (activeTab === 'identity')       await putJson(`/api/student/profile/identity${q}`,       sanitize(identity));
+      if (activeTab === 'personal')       await putJson('/api/student/profile/personal',       sanitize(personal));
+      if (activeTab === 'contact')        await putJson('/api/student/profile/contact',        sanitize(contact));
+      if (activeTab === 'academic')       await putJson('/api/student/profile/academic',       sanitize(academic));
+      if (activeTab === 'schooling')      await putJson('/api/student/profile/schooling',      sanitize(schooling));
+      if (activeTab === 'professional')   await putJson('/api/student/profile/professional',   sanitize(professional));
+      if (activeTab === 'certifications') await putJson('/api/student/profile/certifications', sanitize(certifications));
+      if (activeTab === 'skills')         await putJson('/api/student/profile/skills',         sanitize(skills));
+      if (activeTab === 'resume')         await putJson('/api/student/profile/resume',         sanitize(resume));
+      if (activeTab === 'identity')       await putJson('/api/student/profile/identity',       sanitize(identity));
       setToast({ msg: 'Saved successfully!', type: 'success' });
       await loadProfile();
     } catch (e: any) {
@@ -236,7 +234,7 @@ export default function StudentProfile() {
     if (isReadonly) return;
     setSubmitting(true);
     try {
-      await postJson(`/api/student/profile/submit?email=${encodeURIComponent(email)}`, {});
+      await postJson('/api/student/profile/submit', {});
       setToast({ msg: 'Profile submitted to faculty for verification!', type: 'success' });
       await loadProfile();
     } catch (e: any) {

@@ -15,7 +15,7 @@ import StudentLayout from '../components/StudentLayout';
 /* ══════════════════════════════════
    TYPES — aligned with backend DTOs
 ══════════════════════════════════ */
-/* GET /api/student/profile?email= */
+/* GET /api/student/profile */
 type StudentProfile = {
   id: number;
   rollNo: string;
@@ -309,8 +309,8 @@ export default function StudentDashboard() {
       try {
         setLoading(true);
         const [profRes, drivesRes, appsRes, statsRes] = await Promise.all([
-          // GET /api/student/profile?email=
-          getJson<StudentProfile>(`/api/student/profile?email=${encodeURIComponent(email)}`),
+          // GET /api/student/profile
+          getJson<StudentProfile>('/api/student/profile'),
           // GET /api/student/drives?email=
           getJson<Drive[]>(`/api/student/drives?email=${encodeURIComponent(email)}`),
           // GET /api/student/applications?email=

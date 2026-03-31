@@ -81,9 +81,9 @@ export default function StudentManagement({ onNavigate }: { onNavigate?: (view: 
         const normalizedStudents: Student[] = (studentsRes.data || []).map(student => ({
           id: student.id,
           email: student.email,
-          rollNo: student.rollNo,
+          rollNo: student.rollNo || `ROLL${student.id}`,
           batch: student.batch || '',
-          departmentName: student.department || '',
+          departmentName: student.department || 'UNASSIGNED',
           verificationStatus: student.verificationStatus,
           isLocked: !!student.isLocked,
           isPlaced: !!student.isPlaced,

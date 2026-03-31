@@ -38,7 +38,8 @@ const StudentLoginPage = ({ onBack, onRegister }: Props) => {
     try {
       const res = await postJson<{ token: string; role: string; email: string; name: string }>(
         '/api/student/auth/login',
-        { email, password }
+        { email, password },
+        false
       );
       if (res.data.role !== 'STUDENT') {
         throw new Error('Access denied: not a student account');

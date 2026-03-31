@@ -26,7 +26,8 @@ const AdminFacultyLoginPage = ({ onBack, onSuccess }: Props) => {
       const expectedRole = role === 'Placement Head' ? 'PLACEMENT_HEAD' : 'FACULTY';
       const res = await postJson<{ token: string; role: string; email: string; name: string }>(
         '/api/auth/login',
-        { email: username, password }
+        { email: username, password },
+        false
       );
       if (res.data.role !== expectedRole) {
         throw new Error('Access denied for selected role');

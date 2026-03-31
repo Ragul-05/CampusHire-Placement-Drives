@@ -91,7 +91,7 @@ export default function StudentDrives() {
       const [drivesRes, profileRes] = await Promise.all([
         getJson<DriveDto[]>(`/api/student/drives?email=${encodeURIComponent(email)}`),
         getJson<{ isLocked: boolean; verificationStatus: string }>(
-          `/api/student/profile?email=${encodeURIComponent(email)}`
+          '/api/student/profile'
         ).catch(() => ({ data: { isLocked: false, verificationStatus: 'PENDING' } })),
       ]);
       setDrives(drivesRes.data || []);

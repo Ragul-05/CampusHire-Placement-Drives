@@ -58,7 +58,7 @@ const StudentRegisterPage = ({ onBack, onLogin }: Props) => {
       await postJson<void>(`/api/student/auth/register?universityRegNo=${encodeURIComponent(regNo)}&departmentCode=${encodeURIComponent(dept)}`, {
         email,
         password
-      });
+      }, false);
       setSuccess(true);
       if (onLogin) {
         onLogin();

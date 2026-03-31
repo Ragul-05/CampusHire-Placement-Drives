@@ -5,7 +5,7 @@ import {
   CheckCircle2, RefreshCw, GraduationCap, Link as LinkIcon, X
 } from 'lucide-react';
 import '../styles/dashboard.css';
-import { getJson, postJson, facultyUrl } from '../utils/api';
+import { getJson, postJson } from '../utils/api';
 import FacultyLayout from '../components/FacultyLayout';
 
 /* ════════════════ TYPES — aligned with FacultyStudentDTO ════════════════ */
@@ -117,8 +117,7 @@ function ProfileModal({ student, onClose, onAction, submitting }: {
   // Fetch extended profile details
   const [detail, setDetail]             = useState<StudentProfile | null>(null);
   useEffect(() => {
-    // ✅ GET /api/faculty/students/{id}?facultyEmail=
-    getJson<StudentProfile>(facultyUrl(`/api/faculty/students/${student.id}`))
+    getJson<StudentProfile>(`/api/faculty/students/${student.id}`)
       .then(r => setDetail(r.data))
       .catch(() => setDetail(student)); // fallback to list data
   }, [student.id]);
@@ -336,20 +335,26 @@ export default function StudentVerification({ onNavigate }: { onNavigate?: (view
   const [filtered, setFiltered]     = useState<StudentProfile[]>([]);
   const [selected, setSelected]     = useState<StudentProfile | null>(null);
   const [search, setSearch]         = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('PENDING');
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast]           = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  /* ── Load: GET /api/faculty/students/all?facultyEmail= ── */
+  /* ── Load faculty students from the authenticated faculty session ── */
   useEffect(() => {
     let active = true;
     (async () => {
       try {
         setLoading(true);
-        // ✅ GET /api/faculty/students/all?facultyEmail=
-        const res = await getJson<StudentProfile[]>(facultyUrl('/api/faculty/students/all'));
-        if (active) setStudents(res.data || []);
+        const [pendingRes, allRes] = await Promise.all([
+          getJson<StudentProfile[]>('/api/faculty/students/pending'),
+          getJson<StudentProfile[]>('/api/faculty/students/all'),
+        ]);
+        if (!active) return;
+        const mergedMap = new Map<number, StudentProfile>();
+        (pendingRes.data || []).forEach(student => mergedMap.set(student.id, student));
+        (allRes.data || []).forEach(student => mergedMap.set(student.id, student));
+        setStudents(Array.from(mergedMap.values()));
       } catch (e: any) {
         if (active) setToast({ msg: e.message || 'Failed to load students', type: 'error' });
       } finally {
@@ -387,15 +392,14 @@ export default function StudentVerification({ onNavigate }: { onNavigate?: (view
     REJECTED: students.filter(s => s.verificationStatus === 'REJECTED').length,
   };
 
-  /* ── Submit: POST /api/faculty/students/{id}/verify?facultyEmail= ── */
+  /* ── Submit verification using the authenticated faculty session ── */
   const handleAction = async (action: ActionType, remarks: string) => {
     if (!selected) return;
     try {
       setSubmitting(true);
-      // ✅ POST /api/faculty/students/{id}/verify?facultyEmail=
       // body: ProfileVerificationRequestDTO { status: VerificationStatus, remarks: string }
       await postJson(
-        facultyUrl(`/api/faculty/students/${selected.id}/verify`),
+        `/api/faculty/students/${selected.id}/verify`,
         { status: action, remarks: remarks.trim() || (action === 'VERIFIED' ? 'Profile verified' : 'Profile rejected') }
       );
       setSelected(null);

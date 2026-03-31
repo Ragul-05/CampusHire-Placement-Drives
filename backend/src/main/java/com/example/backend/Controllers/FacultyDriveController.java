@@ -12,8 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/faculty/drives")
 @CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
@@ -84,5 +82,15 @@ public class FacultyDriveController {
 
         driveFilteringService.toggleFacultyApproval(studentId, request.getDriveId(), request.isApproved(), facultyEmail);
         return ResponseEntity.ok(ApiResponse.success("Student approval toggled successfully", null));
+    }
+
+    @AuditAction(action = "VIEW_DRIVE_APPLICATIONS", targetEntity = "DRIVE_APPLICATION")
+    @GetMapping("/legacy/{driveId}/applications")
+    public ResponseEntity<ApiResponse<List<FacultyApplicationDTO>>> getDriveApplicationsLegacy(
+            @PathVariable Long driveId,
+            @RequestParam(required = false, defaultValue = "faculty@dept.com") String facultyEmail) {
+
+        List<FacultyApplicationDTO> participants = facultyDriveService.getDriveParticipants(driveId, facultyEmail);
+        return ResponseEntity.ok(ApiResponse.success("Drive applications retrieved successfully", participants));
     }
 }

@@ -25,6 +25,12 @@ public class AdminShortlistController {
         return ResponseEntity.ok(ApiResponse.success("Eligible applicants fetched successfully", response));
     }
 
+    @GetMapping("/eligible-students-alias")
+    public ResponseEntity<ApiResponse<List<DriveApplicationDTO>>> getEligibleStudentsAlias(@PathVariable Long driveId) {
+        List<DriveApplicationDTO> response = adminShortlistService.getFacultyApprovedApplicants(driveId);
+        return ResponseEntity.ok(ApiResponse.success("Eligible students fetched successfully", response));
+    }
+
     @PostMapping("/generate")
     @AuditAction(action = "GENERATE_SHORTLIST", targetEntity = "PlacementDrive")
     public ResponseEntity<ApiResponse<List<DriveApplicationDTO>>> generateShortlist(

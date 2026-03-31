@@ -31,6 +31,17 @@ public class FacultyVerificationController {
         return ResponseEntity.ok(ApiResponse.success("Verification submitted successfully", null));
     }
 
+    @AuditAction(action = "VERIFY_STUDENT_PROFILE", targetEntity = "PROFILE_VERIFICATION")
+    @PostMapping("/verify/{studentId}")
+    public ResponseEntity<ApiResponse<Void>> verifyStudentProfile(
+            @PathVariable Long studentId,
+            @Valid @RequestBody ProfileVerificationRequestDTO request,
+            @RequestParam(required = false, defaultValue = "faculty@dept.com") String facultyEmail) {
+
+        facultyStudentService.verifyStudentProfile(studentId, request, facultyEmail);
+        return ResponseEntity.ok(ApiResponse.success("Student verification updated successfully", null));
+    }
+
     // Inner DTO for verification submission
     @lombok.Data
     @lombok.Builder

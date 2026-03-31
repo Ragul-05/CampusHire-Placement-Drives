@@ -31,6 +31,15 @@ public class FacultyStudentController {
         return ResponseEntity.ok(ApiResponse.success("Department students retrieved successfully", students));
     }
 
+    @AuditAction(action = "VIEW_PENDING_STUDENTS", targetEntity = "STUDENT_PROFILE")
+    @GetMapping("/pending")
+    public ResponseEntity<ApiResponse<List<FacultyStudentDTO>>> getPendingStudents(
+            @RequestParam(required = false, defaultValue = "faculty@dept.com") String facultyEmail) {
+
+        List<FacultyStudentDTO> students = facultyStudentService.getPendingStudents(facultyEmail);
+        return ResponseEntity.ok(ApiResponse.success("Pending students retrieved successfully", students));
+    }
+
     @AuditAction(action = "VIEW_STUDENT_PROFILE", targetEntity = "STUDENT_PROFILE")
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<FacultyStudentDTO>> getStudentProfile(
@@ -62,6 +71,16 @@ public class FacultyStudentController {
         return ResponseEntity.ok(ApiResponse.success("Student flagged for admin review", null));
     }
 
+    @AuditAction(action = "SEND_STUDENTS_TO_ADMIN", targetEntity = "DRIVE_APPLICATION")
+    @PostMapping("/send-to-admin")
+    public ResponseEntity<ApiResponse<Void>> sendStudentsToAdmin(
+            @RequestBody SendToAdminRequest request,
+            @RequestParam(required = false, defaultValue = "faculty@dept.com") String facultyEmail) {
+
+        facultyStudentService.sendStudentsToAdmin(request.getDriveId(), request.getStudentIds(), facultyEmail);
+        return ResponseEntity.ok(ApiResponse.success("Students sent to admin successfully", null));
+    }
+
     @AuditAction(action = "VIEW_VERIFICATION_HISTORY", targetEntity = "PROFILE_VERIFICATION")
     @GetMapping("/verification-history")
     public ResponseEntity<ApiResponse<List<ProfileVerification>>> getVerificationHistory(
@@ -78,5 +97,11 @@ public class FacultyStudentController {
 
         List<FacultyStudentDTO> students = facultyStudentService.getDepartmentStudents(facultyEmail, null);
         return ResponseEntity.ok(ApiResponse.success("All students retrieved successfully", students));
+    }
+
+    @lombok.Data
+    public static class SendToAdminRequest {
+        private Long driveId;
+        private List<Long> studentIds;
     }
 }

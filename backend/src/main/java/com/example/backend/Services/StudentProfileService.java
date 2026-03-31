@@ -6,6 +6,7 @@ import com.example.backend.Exceptions.ResourceNotFoundException;
 import com.example.backend.Mappers.StudentMapper;
 import com.example.backend.Models.*;
 import com.example.backend.Models.enums.VerificationStatus;
+import com.example.backend.Repositories.ProfileVerificationRepository;
 import com.example.backend.Repositories.StudentProfileRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,9 @@ public class StudentProfileService {
     @Autowired
     private StudentProfileRepository studentProfileRepository;
 
+    @Autowired
+    private ProfileVerificationRepository profileVerificationRepository;
+
     /* ── GET profile (full, all lazy associations loaded) ── */
     @Transactional(readOnly = true)
     public StudentProfileDto getProfileByEmail(String email) {
@@ -27,6 +31,8 @@ public class StudentProfileService {
         // The @Transactional context keeps the session open so getCertifications() lazy-loads fine here
         StudentProfileDto dto = StudentMapper.toDto(profile);
         dto.setProfileCompletion(calculateCompletionPercentage(profile));
+        profileVerificationRepository.findTopByStudentProfileIdOrderByVerifiedAtDesc(profile.getId())
+                .ifPresent(verification -> dto.setLatestVerificationRemarks(verification.getRemarks()));
         return dto;
     }
 

@@ -40,6 +40,10 @@ public class AdminShortlistService {
         return applications.stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
+    public List<DriveApplicationDTO> getFacultyApprovedApplicants(Long driveId) {
+        return getEligibleApplicants(driveId);
+    }
+
     public List<DriveApplicationDTO> generateShortlist(Long driveId, ShortlistRequestDTO request, String adminEmail) {
         if (!placementDriveRepository.existsById(driveId)) {
             throw new ResourceNotFoundException("Placement Drive not found");

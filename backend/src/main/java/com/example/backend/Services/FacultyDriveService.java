@@ -10,6 +10,7 @@ import com.example.backend.Models.DriveApplication;
 import com.example.backend.Models.EligibilityCriteria;
 import com.example.backend.Models.PlacementDrive;
 import com.example.backend.Models.User;
+import com.example.backend.Models.StudentSkill;
 import com.example.backend.Models.enums.ApplicationStage;
 import com.example.backend.Models.enums.DriveStatus;
 import com.example.backend.Repositories.DriveApplicationRepository;
@@ -107,7 +108,14 @@ public class FacultyDriveService {
         return applications.stream().map(app -> FacultyApplicationDTO.builder()
                 .id(app.getId())
                 .studentId(app.getStudentProfile().getId())
-                .studentName(app.getStudentProfile().getUser().getEmail())
+                .studentName(app.getStudentProfile().getPersonalDetails() != null
+                        && app.getStudentProfile().getPersonalDetails().getFirstName() != null
+                        && !app.getStudentProfile().getPersonalDetails().getFirstName().isBlank()
+                        ? (app.getStudentProfile().getPersonalDetails().getFirstName() + " "
+                                + (app.getStudentProfile().getPersonalDetails().getLastName() != null
+                                        ? app.getStudentProfile().getPersonalDetails().getLastName()
+                                        : "")).trim()
+                        : app.getStudentProfile().getUser().getEmail())
                 .rollNo(app.getStudentProfile().getRollNo())
                 .driveId(app.getDrive().getId())
                 .companyName(app.getDrive().getCompany().getName())
@@ -115,6 +123,17 @@ public class FacultyDriveService {
                 .stage(app.getStage())
                 .appliedAt(app.getAppliedAt())
                 .lastUpdatedAt(app.getLastUpdatedAt())
+                .cgpa(app.getStudentProfile().getAcademicRecord() != null
+                        ? app.getStudentProfile().getAcademicRecord().getCgpa()
+                        : null)
+                .skills(app.getStudentProfile().getSkills() != null
+                        ? app.getStudentProfile().getSkills().stream().map(StudentSkill::getSkillName).collect(Collectors.toList())
+                        : List.of())
+                .verificationStatus(app.getStudentProfile().getVerificationStatus() != null
+                        ? app.getStudentProfile().getVerificationStatus().name()
+                        : null)
+                .isEligibleForPlacements(Boolean.TRUE.equals(app.getStudentProfile().getIsEligibleForPlacements()))
+                .facultyApproved(Boolean.TRUE.equals(app.getFacultyApproved()))
                 .build()).collect(Collectors.toList());
     }
 }

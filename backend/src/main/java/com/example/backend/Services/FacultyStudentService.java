@@ -5,10 +5,12 @@ import com.example.backend.DTOs.Faculty.ProfileVerificationRequestDTO;
 import com.example.backend.Exceptions.ResourceNotFoundException;
 import com.example.backend.Exceptions.UnauthorizedActionException;
 import com.example.backend.Models.ProfileVerification;
+import com.example.backend.Models.DriveApplication;
 import com.example.backend.Models.StudentProfile;
 import com.example.backend.Models.StudentSkill;
 import com.example.backend.Models.User;
 import com.example.backend.Models.enums.VerificationStatus;
+import com.example.backend.Repositories.DriveApplicationRepository;
 import com.example.backend.Repositories.ProfileVerificationRepository;
 import com.example.backend.Repositories.StudentProfileRepository;
 import com.example.backend.Repositories.UserRepository;
@@ -28,6 +30,9 @@ public class FacultyStudentService {
 
     @Autowired
     private ProfileVerificationRepository profileVerificationRepository;
+
+    @Autowired
+    private DriveApplicationRepository driveApplicationRepository;
 
     @Autowired
     private UserRepository userRepository;
@@ -66,6 +71,11 @@ public class FacultyStudentService {
         }
 
         return students.stream().map(this::mapToDTO).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<FacultyStudentDTO> getPendingStudents(String facultyEmail) {
+        return getDepartmentStudents(facultyEmail, VerificationStatus.PENDING.name());
     }
 
     @Transactional(readOnly = true)
@@ -135,6 +145,38 @@ public class FacultyStudentService {
         studentProfileRepository.save(student);
     }
 
+    @Transactional
+    public void sendStudentsToAdmin(Long driveId, List<Long> studentIds, String facultyEmail) {
+        User faculty = getAuthenticatedFaculty(facultyEmail);
+        if (studentIds == null || studentIds.isEmpty()) {
+            throw new IllegalArgumentException("At least one student must be selected");
+        }
+
+        List<DriveApplication> applications = driveApplicationRepository
+                .findByDriveIdAndStudentProfileIdIn(driveId, studentIds);
+
+        if (applications.isEmpty()) {
+            throw new IllegalArgumentException("No applications found for the selected students");
+        }
+
+        for (DriveApplication application : applications) {
+            StudentProfile student = application.getStudentProfile();
+            if (!student.getUser().getDepartment().getId().equals(faculty.getDepartment().getId())) {
+                throw new UnauthorizedActionException("Cannot send student from another department");
+            }
+            if (student.getVerificationStatus() != VerificationStatus.VERIFIED) {
+                throw new IllegalArgumentException("Only verified students can be sent to admin");
+            }
+
+            application.setFacultyApproved(true);
+            application.setLastUpdatedAt(LocalDateTime.now());
+            application.setLastUpdatedBy(faculty);
+            student.setEligibleForAdminReview(true);
+        }
+
+        driveApplicationRepository.saveAll(applications);
+    }
+
     public List<ProfileVerification> getVerificationHistory(String facultyEmail) {
         User faculty = getAuthenticatedFaculty(facultyEmail);
         return profileVerificationRepository.findByFacultyId(faculty.getId());
@@ -176,9 +218,51 @@ public class FacultyStudentService {
                 .phoneNumber(s.getContactDetails() != null ? s.getContactDetails().getStudentMobile1() : null)
                 .linkedinUrl(s.getProfessionalProfile() != null ? s.getProfessionalProfile().getLinkedinProfileUrl() : null)
                 .githubUrl(s.getProfessionalProfile() != null ? s.getProfessionalProfile().getGithubProfileUrl() : null)
+                .xMarksPercentage(s.getSchoolingDetails() != null ? s.getSchoolingDetails().getXMarksPercentage() : null)
+                .xiiMarksPercentage(s.getSchoolingDetails() != null ? s.getSchoolingDetails().getXiiMarksPercentage() : null)
+                .latestVerificationRemarks(profileVerificationRepository
+                        .findTopByStudentProfileIdOrderByVerifiedAtDesc(s.getId())
+                        .map(ProfileVerification::getRemarks)
+                        .orElse(null))
                 .skills(s.getSkills() != null
                         ? s.getSkills().stream()
                                 .map(StudentSkill::getSkillName)
+                                .collect(Collectors.toList())
+                        : List.of())
+                .personalDetails(FacultyStudentDTO.PersonalDetailsView.builder()
+                        .dateOfBirth(s.getPersonalDetails() != null && s.getPersonalDetails().getDateOfBirth() != null
+                                ? s.getPersonalDetails().getDateOfBirth().toString()
+                                : null)
+                        .gender(s.getPersonalDetails() != null ? s.getPersonalDetails().getGender() : null)
+                        .address(s.getContactDetails() != null ? s.getContactDetails().getFullAddress() : null)
+                        .build())
+                .academicRecords(List.of(
+                        FacultyStudentDTO.AcademicRecordView.builder()
+                                .degree("10th Standard")
+                                .institution(s.getSchoolingDetails() != null ? s.getSchoolingDetails().getXSchoolName() : null)
+                                .percentage(s.getSchoolingDetails() != null ? s.getSchoolingDetails().getXMarksPercentage() : null)
+                                .yearOfCompletion(s.getSchoolingDetails() != null ? s.getSchoolingDetails().getXYearOfPassing() : null)
+                                .build(),
+                        FacultyStudentDTO.AcademicRecordView.builder()
+                                .degree("12th Standard")
+                                .institution(s.getSchoolingDetails() != null ? s.getSchoolingDetails().getXiiSchoolName() : null)
+                                .percentage(s.getSchoolingDetails() != null ? s.getSchoolingDetails().getXiiMarksPercentage() : null)
+                                .yearOfCompletion(s.getSchoolingDetails() != null ? s.getSchoolingDetails().getXiiYearOfPassing() : null)
+                                .build(),
+                        FacultyStudentDTO.AcademicRecordView.builder()
+                                .degree("UG")
+                                .institution(s.getUser().getDepartment() != null ? s.getUser().getDepartment().getName() : null)
+                                .percentage(s.getAcademicRecord() != null ? s.getAcademicRecord().getCgpa() : null)
+                                .yearOfCompletion(s.getAcademicRecord() != null ? s.getAcademicRecord().getUgYearOfPass() : null)
+                                .build()
+                ).stream().filter(record -> record.getInstitution() != null || record.getPercentage() != null).collect(Collectors.toList()))
+                .certifications(s.getCertifications() != null
+                        ? s.getCertifications().stream()
+                                .map(certification -> FacultyStudentDTO.CertificationView.builder()
+                                        .name(certification.getSkillName())
+                                        .issuingOrganization(certification.getVendor())
+                                        .issueDate(certification.getDuration())
+                                        .build())
                                 .collect(Collectors.toList())
                         : List.of())
                 .build();

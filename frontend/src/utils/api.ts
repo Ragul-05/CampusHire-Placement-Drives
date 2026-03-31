@@ -1,8 +1,10 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
+let refreshPromise: Promise<string | null> | null = null;
 
 function redirectToLoginForStoredRole() {
   const role = localStorage.getItem('role');
   localStorage.removeItem('token');
+  localStorage.removeItem('refreshToken');
   localStorage.removeItem('role');
   localStorage.removeItem('email');
   localStorage.removeItem('name');
@@ -22,8 +24,59 @@ export type ApiResponse<T> = {
   timestamp?: string;
 };
 
-export async function apiJson<T>(path: string, options: { method?: string; body?: unknown; auth?: boolean } = {}): Promise<ApiResponse<T>> {
-  const { method = 'GET', body, auth = true } = options;
+async function refreshAccessToken(): Promise<string | null> {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    const refreshToken = localStorage.getItem('refreshToken');
+    const role = localStorage.getItem('role');
+
+    if (!refreshToken || !role) {
+      return null;
+    }
+
+    const refreshPath = role === 'STUDENT' ? '/api/student/auth/refresh' : '/api/auth/refresh';
+    const response = await fetch(`${API_BASE}${refreshPath}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ refreshToken })
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = await response.json() as ApiResponse<{
+      token: string;
+      refreshToken: string;
+      role?: string;
+      email?: string;
+      name?: string;
+    }>;
+
+    if (!payload?.success || !payload.data?.token || !payload.data?.refreshToken) {
+      return null;
+    }
+
+    saveAuth(payload.data);
+    return payload.data.token;
+  })();
+
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
+  }
+}
+
+export async function apiJson<T>(
+  path: string,
+  options: { method?: string; body?: unknown; auth?: boolean; _retry?: boolean } = {}
+): Promise<ApiResponse<T>> {
+  const { method = 'GET', body, auth = true, _retry = false } = options;
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
@@ -40,12 +93,18 @@ export async function apiJson<T>(path: string, options: { method?: string; body?
     body: body ? JSON.stringify(body) : undefined
   });
 
-  const text = await res.text();
   if ((res.status === 401 || res.status === 403) && auth) {
+    if (!_retry) {
+      const refreshedToken = await refreshAccessToken();
+      if (refreshedToken) {
+        return apiJson<T>(path, { method, body, auth, _retry: true });
+      }
+    }
     redirectToLoginForStoredRole();
     throw new Error('Your session has expired or is invalid. Please log in again.');
   }
 
+  const text = await res.text();
   if (!text.trim()) {
     if (!res.ok) {
       throw new Error(`Request failed with status ${res.status}`);
@@ -91,8 +150,9 @@ export async function deleteJson<T>(path: string, auth = true): Promise<ApiRespo
   return apiJson<T>(path, { method: 'DELETE', auth });
 }
 
-export function saveAuth(data: { token: string; role?: string; email?: string; name?: string }) {
+export function saveAuth(data: { token: string; refreshToken?: string; role?: string; email?: string; name?: string }) {
   localStorage.setItem('token', data.token);
+  if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
   if (data.role) localStorage.setItem('role', data.role);
   if (data.email) localStorage.setItem('email', data.email);
   if (data.name) localStorage.setItem('name', data.name);

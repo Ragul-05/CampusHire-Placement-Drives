@@ -213,6 +213,7 @@ export default function DriveFiltering({ onNavigate }: { onNavigate?: (view: any
   const [searchStudent, setSearchStudent] = useState('');
   const [showOnlyEligible, setShowOnlyEligible] = useState(true);
   const [refreshKey, setRefreshKey]       = useState(0);
+  const [sendingToAdmin, setSendingToAdmin] = useState(false);
 
   const selectedDrive = drives.find(d => d.id === selectedDriveId) ?? null;
 
@@ -341,6 +342,27 @@ export default function DriveFiltering({ onNavigate }: { onNavigate?: (view: any
 
   const eligibleCount   = filterResult ? filterResult.eligibleStudents.filter(s => selectedDrive && isEligible(s, selectedDrive.eligibilityCriteria)).length : 0;
   const eligibilityRate = filterResult?.totalVerified ? Math.round((eligibleCount / filterResult.totalVerified) * 100) : 0;
+  const approvedStudentIds = displayStudents.filter(student => student.facultyApproved).map(student => student.id);
+
+  const sendApprovedStudentsToAdmin = async () => {
+    if (!selectedDrive || approvedStudentIds.length === 0) {
+      setToast({ msg: 'Approve at least one student before sending to admin.', type: 'error' });
+      return;
+    }
+    try {
+      setSendingToAdmin(true);
+      await postJson(
+        facultyUrl('/api/faculty/students/send-to-admin'),
+        { driveId: selectedDrive.id, studentIds: approvedStudentIds }
+      );
+      setToast({ msg: 'Approved students sent to admin successfully!', type: 'success' });
+      runFilter(selectedDrive.id);
+    } catch (e: any) {
+      setToast({ msg: e.message || 'Failed to send students to admin', type: 'error' });
+    } finally {
+      setSendingToAdmin(false);
+    }
+  };
 
   /* ── Sort toggle ── */
   const toggleSort = (key: SortKey) => {
@@ -404,6 +426,15 @@ export default function DriveFiltering({ onNavigate }: { onNavigate?: (view: any
                 })),
               }}
             />
+            <button
+              className="btn-primary"
+              onClick={sendApprovedStudentsToAdmin}
+              disabled={!selectedDrive || approvedStudentIds.length === 0 || sendingToAdmin}
+              title={approvedStudentIds.length === 0 ? 'Approve students first' : 'Send faculty-approved students to admin'}
+            >
+              <Award size={15} />
+              {sendingToAdmin ? 'Sending…' : `Send to Admin${approvedStudentIds.length ? ` (${approvedStudentIds.length})` : ''}`}
+            </button>
             <button className="btn-secondary" onClick={() => setRefreshKey(k => k + 1)} disabled={loadingDrives || filtering}>
               <RefreshCw size={15} style={(loadingDrives || filtering) ? { animation: 'spin 1s linear infinite' } : {}} />
               Refresh

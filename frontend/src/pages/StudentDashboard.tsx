@@ -27,6 +27,7 @@ type StudentProfile = {
   highestPackageLpa: number | null;
   resumeUrl: string | null;
   profileCompletion?: number;
+  latestVerificationRemarks?: string;
   personalDetails?: {
     firstName: string;
     lastName: string;
@@ -405,7 +406,7 @@ export default function StudentDashboard() {
 
         {/* ── Verification banner ── */}
         {!loading && profile && (
-          <VerificationBanner status={profile.verificationStatus} />
+          <VerificationBanner status={profile.verificationStatus} remarks={profile.latestVerificationRemarks} />
         )}
 
         {/* ── Welcome header ── */}

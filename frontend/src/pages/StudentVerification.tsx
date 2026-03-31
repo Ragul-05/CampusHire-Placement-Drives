@@ -29,6 +29,9 @@ type StudentProfile = {
   profileCompletionPercentage?: number;
   linkedinUrl?: string;
   githubUrl?: string;
+  xMarksPercentage?: number;
+  xiiMarksPercentage?: number;
+  latestVerificationRemarks?: string;
   personalDetails?: { dateOfBirth: string; gender: string; address: string };
   academicRecords?: Array<{ degree: string; institution: string; percentage: number; yearOfCompletion: number }>;
   certifications?: Array<{ name: string; issuingOrganization: string; issueDate: string }>;
@@ -214,6 +217,14 @@ function ProfileModal({ student, onClose, onAction, submitting }: {
                   <span className="sv-info-value">{merged.historyOfArrears}</span>
                 </div>
                 <div className="sv-info-item">
+                  <span className="sv-info-label">10th Marks</span>
+                  <span className="sv-info-value">{merged.xMarksPercentage != null ? `${merged.xMarksPercentage}%` : '—'}</span>
+                </div>
+                <div className="sv-info-item">
+                  <span className="sv-info-label">12th Marks</span>
+                  <span className="sv-info-value">{merged.xiiMarksPercentage != null ? `${merged.xiiMarksPercentage}%` : '—'}</span>
+                </div>
+                <div className="sv-info-item">
                   <span className="sv-info-label">Profile Completion</span>
                   <ProfileBar pct={pct} />
                 </div>
@@ -248,7 +259,11 @@ function ProfileModal({ student, onClose, onAction, submitting }: {
                     <div key={i} className="sv-cert-card">
                       <div className="sv-cert-name">{c.name}</div>
                       <div className="sv-cert-org">{c.issuingOrganization}</div>
-                      <div className="sv-cert-date">{new Date(c.issueDate).toLocaleDateString('en-IN')}</div>
+                      <div className="sv-cert-date">
+                        {c.issueDate && !Number.isNaN(new Date(c.issueDate).getTime())
+                          ? new Date(c.issueDate).toLocaleDateString('en-IN')
+                          : (c.issueDate || '—')}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -271,6 +286,12 @@ function ProfileModal({ student, onClose, onAction, submitting }: {
                 <FileText size={16} /> Verification Remarks
                 <span className="sv-remarks-hint"> (required if rejecting)</span>
               </h4>
+              {merged.latestVerificationRemarks && (
+                <div className="sv-confirm-remarks" style={{ marginBottom: 10 }}>
+                  <span className="sv-confirm-remarks-label">Latest Faculty Remark:</span>
+                  <span>{merged.latestVerificationRemarks}</span>
+                </div>
+              )}
               <textarea
                 ref={textRef}
                 className={`sv-remarks${remarksErr ? ' sv-remarks-error' : ''}`}
@@ -337,6 +358,11 @@ export default function StudentVerification({ onNavigate }: { onNavigate?: (view
     })();
     return () => { active = false; };
   }, [refreshKey]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setRefreshKey(k => k + 1), 30000);
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   /* ── Filter ── */
   useEffect(() => {

@@ -55,19 +55,22 @@ const VIEW_TO_PATH: Record<string, string> = {
 
 function RequireStudent({ children }: { children: JSX.Element }) {
   const role = localStorage.getItem('role');
-  if (role !== 'STUDENT') return <Navigate to={ROUTES.studentLogin} replace />;
+  const token = localStorage.getItem('token');
+  if (role !== 'STUDENT' || !token) return <Navigate to={ROUTES.studentLogin} replace />;
   return children;
 }
 
 function RequireFaculty({ children }: { children: JSX.Element }) {
   const role = localStorage.getItem('role');
-  if (role !== 'FACULTY') return <Navigate to={ROUTES.adminLogin} replace />;
+  const token = localStorage.getItem('token');
+  if (role !== 'FACULTY' || !token) return <Navigate to={ROUTES.adminLogin} replace />;
   return children;
 }
 
 function RequireAdmin({ children }: { children: JSX.Element }) {
   const role = localStorage.getItem('role');
-  if (role !== 'PLACEMENT_HEAD') return <Navigate to={ROUTES.adminLogin} replace />;
+  const token = localStorage.getItem('token');
+  if (role !== 'PLACEMENT_HEAD' || !token) return <Navigate to={ROUTES.adminLogin} replace />;
   return children;
 }
 

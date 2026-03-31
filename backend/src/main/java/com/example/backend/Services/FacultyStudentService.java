@@ -51,10 +51,8 @@ public class FacultyStudentService {
 
     @Transactional(readOnly = true)
     public List<FacultyStudentDTO> getDepartmentStudents(String facultyEmail, String statusFilter) {
-        User faculty = getAuthenticatedFaculty(facultyEmail);
-        Long departmentId = faculty.getDepartment().getId();
-
-        List<StudentProfile> students = studentProfileRepository.findByUserDepartmentId(departmentId);
+        getAuthenticatedFaculty(facultyEmail);
+        List<StudentProfile> students = studentProfileRepository.findAll();
 
         if (statusFilter != null && !statusFilter.isEmpty()) {
             final String status = statusFilter.toUpperCase();
@@ -72,19 +70,12 @@ public class FacultyStudentService {
 
     @Transactional(readOnly = true)
     public List<FacultyStudentDTO> getPendingStudents(String facultyEmail) {
-        User faculty = getAuthenticatedFaculty(facultyEmail);
-        Long departmentId = faculty.getDepartment().getId();
-
+        getAuthenticatedFaculty(facultyEmail);
         List<StudentProfile> pendingStudents = studentProfileRepository
-                .findByUserDepartmentIdAndVerificationStatus(departmentId, VerificationStatus.PENDING)
+                .findByVerificationStatus(VerificationStatus.PENDING)
                 .stream()
+                .peek(studentProfileService::ensureDepartmentAssigned)
                 .collect(Collectors.toList());
-
-        // Resilience fallback for legacy data where student/faculty department links were saved incorrectly.
-        // This keeps the verification page dynamic instead of appearing empty when there are real pending profiles in DB.
-        if (pendingStudents.isEmpty()) {
-            pendingStudents = studentProfileRepository.findByVerificationStatus(VerificationStatus.PENDING);
-        }
 
         return pendingStudents.stream()
                 .map(this::mapToDTO)
@@ -93,13 +84,10 @@ public class FacultyStudentService {
 
     @Transactional(readOnly = true)
     public FacultyStudentDTO getStudentProfile(Long studentId, String facultyEmail) {
-        User faculty = getAuthenticatedFaculty(facultyEmail);
+        getAuthenticatedFaculty(facultyEmail);
         StudentProfile student = studentProfileRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
-
-        if (!student.getUser().getDepartment().getId().equals(faculty.getDepartment().getId())) {
-            throw new UnauthorizedActionException("Cannot access student from another department");
-        }
+        studentProfileService.ensureDepartmentAssigned(student);
 
         return mapToDTO(student);
     }
@@ -108,10 +96,7 @@ public class FacultyStudentService {
         User faculty = getAuthenticatedFaculty(facultyEmail);
         StudentProfile student = studentProfileRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
-
-        if (!student.getUser().getDepartment().getId().equals(faculty.getDepartment().getId())) {
-            throw new UnauthorizedActionException("Cannot verify student from another department");
-        }
+        studentProfileService.ensureDepartmentAssigned(student);
 
         if (request.getStatus() == VerificationStatus.REJECTED
                 && (request.getRemarks() == null || request.getRemarks().trim().isEmpty())) {
@@ -146,13 +131,10 @@ public class FacultyStudentService {
     }
 
     public void sendStudentToAdmin(Long studentId, String facultyEmail) {
-        User faculty = getAuthenticatedFaculty(facultyEmail);
+        getAuthenticatedFaculty(facultyEmail);
         StudentProfile student = studentProfileRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
-
-        if (!student.getUser().getDepartment().getId().equals(faculty.getDepartment().getId())) {
-            throw new UnauthorizedActionException("Cannot send student from another department");
-        }
+        studentProfileService.ensureDepartmentAssigned(student);
         if (student.getVerificationStatus() != VerificationStatus.VERIFIED) {
             throw new IllegalArgumentException("Only verified profiles can be sent to admin");
         }
@@ -177,9 +159,7 @@ public class FacultyStudentService {
 
         for (DriveApplication application : applications) {
             StudentProfile student = application.getStudentProfile();
-            if (!student.getUser().getDepartment().getId().equals(faculty.getDepartment().getId())) {
-                throw new UnauthorizedActionException("Cannot send student from another department");
-            }
+            studentProfileService.ensureDepartmentAssigned(student);
             if (student.getVerificationStatus() != VerificationStatus.VERIFIED) {
                 throw new IllegalArgumentException("Only verified students can be sent to admin");
             }

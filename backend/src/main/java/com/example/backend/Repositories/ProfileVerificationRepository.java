@@ -10,5 +10,7 @@ public interface ProfileVerificationRepository extends JpaRepository<ProfileVeri
 
     java.util.List<ProfileVerification> findByStudentProfileUserDepartmentId(Long departmentId);
 
+    java.util.Optional<ProfileVerification> findByStudentProfileId(Long studentProfileId);
+
     java.util.Optional<ProfileVerification> findTopByStudentProfileIdOrderByVerifiedAtDesc(Long studentProfileId);
 }

@@ -2,6 +2,7 @@ package com.example.backend.Controllers;
 
 import com.example.backend.DTOs.AuthRequestDto;
 import com.example.backend.DTOs.AuthResponseDto;
+import com.example.backend.DTOs.RefreshTokenRequestDto;
 import com.example.backend.Services.StudentAuthService;
 import com.example.backend.Utils.ApiResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,12 @@ public class StudentAuthController {
     public ResponseEntity<ApiResponse<AuthResponseDto>> login(@RequestBody AuthRequestDto request) {
         AuthResponseDto response = studentAuthService.login(request);
         return ResponseEntity.ok(ApiResponse.success("Login successful", response));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<ApiResponse<AuthResponseDto>> refresh(@RequestBody RefreshTokenRequestDto request) {
+        AuthResponseDto response = studentAuthService.refresh(request);
+        return ResponseEntity.ok(ApiResponse.success("Token refreshed successfully", response));
     }
 
     @PostMapping("/register")

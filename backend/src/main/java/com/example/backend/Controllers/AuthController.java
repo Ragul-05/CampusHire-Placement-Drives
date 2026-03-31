@@ -2,6 +2,7 @@ package com.example.backend.Controllers;
 
 import com.example.backend.DTOs.AuthRequestDto;
 import com.example.backend.DTOs.AuthResponseDto;
+import com.example.backend.DTOs.RefreshTokenRequestDto;
 import com.example.backend.Services.AuthService;
 import com.example.backend.Utils.ApiResponse;
 import jakarta.validation.Valid;
@@ -20,5 +21,11 @@ public class AuthController {
     public ResponseEntity<ApiResponse<AuthResponseDto>> login(@Valid @RequestBody AuthRequestDto request) {
         AuthResponseDto response = authService.login(request);
         return ResponseEntity.ok(ApiResponse.success("Login successful", response));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<ApiResponse<AuthResponseDto>> refresh(@RequestBody RefreshTokenRequestDto request) {
+        AuthResponseDto response = authService.refresh(request);
+        return ResponseEntity.ok(ApiResponse.success("Token refreshed successfully", response));
     }
 }

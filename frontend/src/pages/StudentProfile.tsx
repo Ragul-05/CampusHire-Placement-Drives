@@ -16,7 +16,7 @@ interface ContactDetailsDto {
   city: string; state: string; pincode: string;
 }
 interface AcademicRecordDto {
-  ugYearOfPass: number | ''; admissionQuota: string; mediumOfInstruction: string;
+  departmentCode: string; ugYearOfPass: number | ''; admissionQuota: string; mediumOfInstruction: string;
   locality: string; sem1Gpa: number | ''; sem2Gpa: number | ''; sem3Gpa: number | '';
   sem4Gpa: number | ''; sem5Gpa: number | ''; sem6Gpa: number | '';
   sem7Gpa: number | ''; sem8Gpa: number | ''; cgpa: number | '';
@@ -58,7 +58,7 @@ interface ProfileDto {
 ───────────────────────────────────────────── */
 const defPersonal   = (): PersonalDetailsDto   => ({ firstName:'',lastName:'',fatherName:'',motherName:'',fatherOccupation:'',motherOccupation:'',gender:'',community:'',dateOfBirth:'',hostelerOrDayScholar:'',bio:'' });
 const defContact    = (): ContactDetailsDto    => ({ alternateEmail:'',studentMobile1:'',studentMobile2:'',parentMobile:'',landlineNo:'',fullAddress:'',city:'',state:'',pincode:'' });
-const defAcademic   = (): AcademicRecordDto    => ({ ugYearOfPass:'',admissionQuota:'',mediumOfInstruction:'',locality:'',sem1Gpa:'',sem2Gpa:'',sem3Gpa:'',sem4Gpa:'',sem5Gpa:'',sem6Gpa:'',sem7Gpa:'',sem8Gpa:'',cgpa:'',standingArrears:'',historyOfArrears:'',hasHistoryOfArrears:false,courseGapInYears:'' });
+const defAcademic   = (): AcademicRecordDto    => ({ departmentCode:'',ugYearOfPass:'',admissionQuota:'',mediumOfInstruction:'',locality:'',sem1Gpa:'',sem2Gpa:'',sem3Gpa:'',sem4Gpa:'',sem5Gpa:'',sem6Gpa:'',sem7Gpa:'',sem8Gpa:'',cgpa:'',standingArrears:'',historyOfArrears:'',hasHistoryOfArrears:false,courseGapInYears:'' });
 const defSchooling  = (): SchoolingDetailsDto  => ({ xMarksPercentage:'',xYearOfPassing:'',xSchoolName:'',xBoardOfStudy:'',xiiMarksPercentage:'',xiiYearOfPassing:'',xiiSchoolName:'',xiiBoardOfStudy:'',xiiCutOffMarks:'',diplomaMarksPercentage:'' });
 const defProfessional = (): ProfessionalProfileDto => ({ linkedinProfileUrl:'',githubProfileUrl:'',portfolioUrl:'',leetcodeProfileUrl:'',leetcodeProblemsSolved:'',leetcodeRating:'',hackerrankProfileUrl:'',codechefProfileUrl:'',codeforcesProfileUrl:'' });
 const defIdentity   = (): IdentityDocsDto      => ({ isAadharAvailable:false,aadharNumber:'',nameAsPerAadhar:'',familyCardNumber:'',isPanCardAvailable:false,isPassportAvailable:false });
@@ -571,7 +571,22 @@ function ContactTab({ data, onChange, disabled, errors }: { data: ContactDetails
 /* ═══════════════════════════════════════════
    TAB 3 — ACADEMIC RECORD
 ═══════════════════════════════════════════ */
-function AcademicTab({ data, onChange, disabled, errors }: { data: AcademicRecordDto; onChange: (d: AcademicRecordDto) => void; disabled: boolean; errors: Record<string,string> }) {
+function AcademicTab({ data, onChange, disabled, errors }: {
+  data: AcademicRecordDto;
+  onChange: (d: AcademicRecordDto) => void;
+  disabled: boolean;
+  errors: Record<string,string>;
+}) {
+  const departmentOptions = [
+    { code: 'CSE', label: 'Computer Science and Engineering' },
+    { code: 'IT', label: 'Information Technology' },
+    { code: 'ECE', label: 'Electronics and Communication' },
+    { code: 'EEE', label: 'Electrical and Electronics' },
+    { code: 'MECH', label: 'Mechanical Engineering' },
+    { code: 'CIVIL', label: 'Civil Engineering' },
+    { code: 'AI', label: 'Artificial Intelligence' },
+    { code: 'DS', label: 'Data Science' },
+  ];
   const set = (k: keyof AcademicRecordDto) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const v = e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value;
     onChange({ ...data, [k]: v });
@@ -580,9 +595,17 @@ function AcademicTab({ data, onChange, disabled, errors }: { data: AcademicRecor
   return (
     <div>
       <div className="sp-grid-2">
-        <Field label="UG Year of Pass"><Input type="number" disabled={disabled} value={data.ugYearOfPass} onChange={set('ugYearOfPass')} placeholder="e.g. 2026" min={2020} max={2035} /></Field>
-        <Field label="Admission Quota"><Select disabled={disabled} value={data.admissionQuota} onChange={set('admissionQuota')}><option value="">Select</option><option>Management</option><option>Government</option><option>NRI</option></Select></Field>
-        <Field label="Medium of Instruction"><Select disabled={disabled} value={data.mediumOfInstruction} onChange={set('mediumOfInstruction')}><option value="">Select</option><option>English</option><option>Tamil</option></Select></Field>
+        <Field label="Department" required>
+          <Select disabled={disabled} value={data.departmentCode || ''} onChange={set('departmentCode')}>
+            <option value="">Select Department</option>
+            {departmentOptions.map(option => (
+              <option key={option.code} value={option.code}>{option.label}</option>
+            ))}
+          </Select>
+        </Field>
+          <Field label="UG Year of Pass"><Input type="number" disabled={disabled} value={data.ugYearOfPass} onChange={set('ugYearOfPass')} placeholder="e.g. 2026" min={2020} max={2035} /></Field>
+          <Field label="Admission Quota"><Select disabled={disabled} value={data.admissionQuota} onChange={set('admissionQuota')}><option value="">Select</option><option>Management</option><option>Government</option><option>NRI</option></Select></Field>
+          <Field label="Medium of Instruction"><Select disabled={disabled} value={data.mediumOfInstruction} onChange={set('mediumOfInstruction')}><option value="">Select</option><option>English</option><option>Tamil</option></Select></Field>
         <Field label="Locality"><Select disabled={disabled} value={data.locality} onChange={set('locality')}><option value="">Select</option><option>Rural</option><option>Urban</option></Select></Field>
         <Field label="CGPA" required error={errors.cgpa}><Input type="number" step="0.01" min={0} max={10} disabled={disabled} value={data.cgpa} onChange={set('cgpa')} placeholder="e.g. 8.5" /></Field>
         <Field label="Standing Arrears"><Input type="number" min={0} disabled={disabled} value={data.standingArrears} onChange={set('standingArrears')} placeholder="Current backlogs" /></Field>

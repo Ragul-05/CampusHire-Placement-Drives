@@ -24,7 +24,7 @@ const AdminFacultyLoginPage = ({ onBack, onSuccess }: Props) => {
     setLoading(true);
     try {
       const expectedRole = role === 'Placement Head' ? 'PLACEMENT_HEAD' : 'FACULTY';
-      const res = await postJson<{ token: string; role: string; email: string; name: string }>(
+      const res = await postJson<{ token: string; refreshToken: string; role: string; email: string; name: string }>(
         '/api/auth/login',
         { email: username, password },
         false

@@ -36,7 +36,7 @@ const StudentLoginPage = ({ onBack, onRegister }: Props) => {
     }
     setLoading(true);
     try {
-      const res = await postJson<{ token: string; role: string; email: string; name: string }>(
+      const res = await postJson<{ token: string; refreshToken: string; role: string; email: string; name: string }>(
         '/api/student/auth/login',
         { email, password },
         false

@@ -199,6 +199,8 @@ public class FacultyStudentService {
     }
 
     private FacultyStudentDTO mapToDTO(StudentProfile s) {
+        studentProfileService.ensureDepartmentAssigned(s);
+
         String fullName = s.getUser().getEmail();
         if (s.getPersonalDetails() != null && s.getPersonalDetails().getFirstName() != null
                 && !s.getPersonalDetails().getFirstName().isBlank()) {

@@ -7,10 +7,14 @@ import com.example.backend.Mappers.StudentMapper;
 import com.example.backend.Models.*;
 import com.example.backend.Models.enums.VerificationStatus;
 import com.example.backend.Repositories.ProfileVerificationRepository;
+import com.example.backend.Repositories.DepartmentRepository;
 import com.example.backend.Repositories.StudentProfileRepository;
+import com.example.backend.Repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Comparator;
 
 @Service
 public class StudentProfileService {
@@ -21,12 +25,19 @@ public class StudentProfileService {
     @Autowired
     private ProfileVerificationRepository profileVerificationRepository;
 
+    @Autowired
+    private DepartmentRepository departmentRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
     /* ── GET profile (full, all lazy associations loaded) ── */
     @Transactional(readOnly = true)
     public StudentProfileDto getProfileByEmail(String email) {
         // Fetch all OneToOne sub-entities eagerly in one query
         StudentProfile profile = studentProfileRepository.findFullProfileByUserEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Profile not found for: " + email));
+        ensureDepartmentAssigned(profile);
         // Certifications are @OneToMany — fetch separately to avoid MultipleBagFetchException
         // The @Transactional context keeps the session open so getCertifications() lazy-loads fine here
         StudentProfileDto dto = StudentMapper.toDto(profile);
@@ -34,6 +45,28 @@ public class StudentProfileService {
         profileVerificationRepository.findTopByStudentProfileIdOrderByVerifiedAtDesc(profile.getId())
                 .ifPresent(verification -> dto.setLatestVerificationRemarks(verification.getRemarks()));
         return dto;
+    }
+
+    @Transactional
+    public void ensureDepartmentAssigned(StudentProfile profile) {
+        if (profile == null || profile.getUser() == null || profile.getUser().getDepartment() != null) {
+            return;
+        }
+
+        String registerNumber = profile.getUser().getUniversityRegNo();
+        if (registerNumber == null || registerNumber.isBlank()) {
+            return;
+        }
+
+        String normalizedRegisterNumber = registerNumber.trim().toUpperCase();
+        departmentRepository.findAll().stream()
+                .sorted(Comparator.comparingInt((Department department) -> department.getCode().length()).reversed())
+                .filter(department -> normalizedRegisterNumber.contains(department.getCode().toUpperCase()))
+                .findFirst()
+                .ifPresent(department -> {
+                    profile.getUser().setDepartment(department);
+                    userRepository.save(profile.getUser());
+                });
     }
 
     /* ── Verification status ── */
@@ -132,6 +165,12 @@ public class StudentProfileService {
     @Transactional
     public void updateAcademicRecord(String email, StudentProfileDto.AcademicRecordDto d) {
         StudentProfile p = getEditableProfile(email);
+        if (d.getDepartmentCode() != null && !d.getDepartmentCode().isBlank()) {
+            Department department = departmentRepository.findByCode(d.getDepartmentCode().trim().toUpperCase())
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid department code: " + d.getDepartmentCode()));
+            p.getUser().setDepartment(department);
+            userRepository.save(p.getUser());
+        }
         AcademicRecord ar = p.getAcademicRecord();
         if (ar == null) {
             ar = new AcademicRecord();

@@ -1,47 +1,24 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   RefreshCw, ChevronLeft, Building2, Briefcase, Users, CheckCircle,
-  Clock, XCircle, AlertCircle, CheckCircle2, X, Eye, Star,
-  TrendingUp, Award, Search, Filter
+  Clock, XCircle, AlertCircle, CheckCircle2, X, Eye, Award, Search, Filter
 } from 'lucide-react';
 import '../styles/dashboard.css';
-import { getJson, facultyUrl } from '../utils/api';
+import { getJson, postJson, facultyUrl } from '../utils/api';
 import FacultyLayout from '../components/FacultyLayout';
 import ExportButton from '../components/ExportButton';
 
-/* ══════════════════════════════════
-   TYPES
-══════════════════════════════════ */
 type Drive = {
   id: number;
   title: string;
   companyName: string;
   role: string;
   ctcLpa: number;
-  status: string;
+  status: 'UPCOMING' | 'ONGOING' | 'COMPLETED';
+  applicationDeadline?: string | null;
   totalDepartmentApplicants: number;
   selectedDepartmentApplicants: number;
-};
-
-type EligibleStudent = {
-  id: number;
-  rollNo: string;
-  name: string;
-  email: string;
-  batch?: string;
-  cgpa: number;
-  standingArrears: number;
-  historyOfArrears: number;
-  verificationStatus: 'PENDING' | 'VERIFIED' | 'REJECTED';
-  isEligibleForPlacements: boolean;
-  skills: string[];
-};
-
-type FilterResult = {
-  drive: any;
-  totalVerified: number;
-  eligibleStudents: EligibleStudent[];
-  ineligibleReasons: Record<number, string[]>;
+  stageCounts: Record<string, number>;
 };
 
 type Participant = {
@@ -49,57 +26,62 @@ type Participant = {
   studentId: number;
   studentName: string;
   rollNo: string;
-  stage: 'APPLIED' | 'ASSESSMENT' | 'TECHNICAL' | 'HR' | 'SELECTED';
+  cgpa: number;
+  stage: 'ELIGIBLE' | 'ASSESSMENT' | 'TECHNICAL' | 'HR' | 'SELECTED';
+  verificationStatus: 'PENDING' | 'VERIFIED' | 'REJECTED';
+  isEligibleForPlacements: boolean;
+  facultyApproved: boolean;
+  submittedToAdmin?: boolean;
+  offerRole?: string | null;
+  offerCtc?: number | null;
 };
 
 type StatusKey = 'ALL' | 'UPCOMING' | 'ONGOING' | 'COMPLETED';
 
-/* ══════════════════════════════════
-   NORMALISE raw API object → Drive
-   Handles both FacultyDriveDTO (title)
-   and active-drives Map (jobTitle)
-══════════════════════════════════ */
-function normaliseDrive(raw: any): Drive {
-  return {
-    id:                          raw.id ?? 0,
-    title:                       raw.title ?? raw.jobTitle ?? raw.driveName ?? 'Unnamed Drive',
-    companyName:                 raw.companyName ?? raw.company ?? '—',
-    role:                        raw.role ?? '—',
-    ctcLpa:                      raw.ctcLpa ?? raw.ctc ?? 0,
-    status:                      (raw.status ?? 'UPCOMING').toString().toUpperCase(),
-    totalDepartmentApplicants:   raw.totalDepartmentApplicants ?? raw.applicants ?? 0,
-    selectedDepartmentApplicants: raw.selectedDepartmentApplicants ?? raw.selected ?? 0,
-  };
-}
-
-/* ══════════════════════════════════
-   CONSTANTS
-══════════════════════════════════ */
-const STATUS_META: Record<string, { cls: string; icon: JSX.Element; color: string }> = {
-  UPCOMING:  { cls: 'info',    icon: <Clock size={11} />,       color: '#3b82f6' },
-  ONGOING:   { cls: 'success', icon: <CheckCircle size={11} />, color: '#10b981' },
-  COMPLETED: { cls: 'warning', icon: <XCircle size={11} />,     color: '#94a3b8' },
+const STATUS_META: Record<Drive['status'], { cls: string; icon: JSX.Element; color: string }> = {
+  UPCOMING: { cls: 'info', icon: <Clock size={11} />, color: '#3b82f6' },
+  ONGOING: { cls: 'success', icon: <CheckCircle size={11} />, color: '#10b981' },
+  COMPLETED: { cls: 'warning', icon: <XCircle size={11} />, color: '#94a3b8' },
 };
 
 const STAGE_COLORS: Record<string, string> = {
-  APPLIED: '#3b82f6', ASSESSMENT: '#f59e0b', TECHNICAL: '#8b5cf6',
-  HR: '#06b6d4', SELECTED: '#10b981',
+  ELIGIBLE: '#16a34a',
+  ASSESSMENT: '#f59e0b',
+  TECHNICAL: '#8b5cf6',
+  HR: '#06b6d4',
+  SELECTED: '#10b981',
 };
 
-/* ══════════════════════════════════
-   HELPERS
-══════════════════════════════════ */
-function calcSkillMatch(studentSkills: string[], requiredSkills: string[]): number {
-  if (!requiredSkills?.length) return 100;
-  if (!studentSkills?.length) return 0;
-  const req  = requiredSkills.map(s => s.toLowerCase());
-  const have = studentSkills.map(s => s.toLowerCase());
-  const hit  = req.filter(r => have.some(h => h.includes(r) || r.includes(h))).length;
-  return Math.round((hit / req.length) * 100);
+function normaliseDrive(raw: any): Drive {
+  return {
+    id: raw.id ?? 0,
+    title: raw.title ?? raw.jobTitle ?? raw.driveName ?? 'Unnamed Drive',
+    companyName: raw.companyName ?? raw.company ?? '—',
+    role: raw.role ?? '—',
+    ctcLpa: raw.ctcLpa ?? raw.ctc ?? 0,
+    status: (raw.status ?? 'UPCOMING').toString().toUpperCase(),
+    applicationDeadline: raw.applicationDeadline ?? null,
+    totalDepartmentApplicants: raw.totalDepartmentApplicants ?? raw.applicants ?? 0,
+    selectedDepartmentApplicants: raw.selectedDepartmentApplicants ?? raw.selected ?? 0,
+    stageCounts: raw.stageCounts ?? {},
+  };
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return 'No deadline';
+  try {
+    return new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  } catch {
+    return value;
+  }
 }
 
 function Toast({ msg, type, onClose }: { msg: string; type: 'success' | 'error'; onClose: () => void }) {
-  useEffect(() => { const t = setTimeout(onClose, 3500); return () => clearTimeout(t); }, []);
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3500);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
   return (
     <div className={`sv-toast sv-toast-${type}`}>
       {type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
@@ -109,75 +91,62 @@ function Toast({ msg, type, onClose }: { msg: string; type: 'success' | 'error';
   );
 }
 
-function SkillBar({ pct }: { pct: number }) {
-  const color = pct === 100 ? '#10b981' : pct >= 60 ? '#f59e0b' : '#ef4444';
-  return (
-    <div className="df-skill-bar-wrap" style={{ minWidth: 90 }}>
-      <div className="df-skill-bar-track">
-        <div className="df-skill-bar-fill" style={{ width: `${pct}%`, background: color }} />
-      </div>
-      <span className="df-skill-bar-label" style={{ color }}>{pct}%</span>
-    </div>
-  );
-}
-
-/* ══════════════════════════════════
-   ELIGIBLE STUDENTS MODAL
-══════════════════════════════════ */
-function EligibleModal({ drive, onClose }: { drive: Drive; onClose: () => void }) {
-  const [loadingStudents, setLoadingStudents] = useState(true);
-  const [students, setStudents]               = useState<EligibleStudent[]>([]);
-  const [participants, setParticipants]       = useState<Participant[]>([]);
-  const [requiredSkills, setRequiredSkills]   = useState<string[]>([]);
-  const [search, setSearch]                   = useState('');
-  const [error, setError]                     = useState<string | null>(null);
+function DriveStudentsModal({
+  drive,
+  onClose,
+  onSubmitted,
+}: {
+  drive: Drive;
+  onClose: () => void;
+  onSubmitted: () => void;
+}) {
+  const [students, setStudents] = useState<Participant[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     let active = true;
     (async () => {
       try {
-        setLoadingStudents(true);
-        const [filterRes, partRes] = await Promise.all([
-          // ✅ GET /api/faculty/drives/{driveId}/filter-eligible?facultyEmail=
-          getJson<FilterResult>(facultyUrl(`/api/faculty/drives/${drive.id}/filter-eligible`)),
-          // ✅ GET /api/faculty/drives/{driveId}/participants?facultyEmail=
-          getJson<Participant[]>(facultyUrl(`/api/faculty/drives/${drive.id}/participants`)),
-        ]);
+        setLoading(true);
+        const res = await getJson<Participant[]>(facultyUrl(`/api/faculty/drive/${drive.id}/applications`));
         if (!active) return;
-        const result = filterRes.data;
-        setStudents(result?.eligibleStudents || []);
-        // required skills may be in eligibilityCriteria of the drive map
-        const driveData = result?.drive as any;
-        setRequiredSkills(driveData?.eligibilityCriteria?.requiredSkills || []);
-        setParticipants(partRes.data || []);
+        setStudents(res.data || []);
       } catch (e: any) {
-        if (active) setError(e.message || 'Failed to load eligible students');
+        if (active) setError(e.message || 'Failed to load drive students');
       } finally {
-        if (active) setLoadingStudents(false);
+        if (active) setLoading(false);
       }
     })();
+
     return () => { active = false; };
   }, [drive.id]);
 
-  const enriched = useMemo(() => {
-    const stageMap = new Map(participants.map(p => [p.studentId, p.stage]));
-    return students
-      .filter(s => {
-        if (!search.trim()) return true;
-        const q = search.toLowerCase();
-        return s.name.toLowerCase().includes(q) || s.rollNo.toLowerCase().includes(q);
-      })
-      .map(s => ({
-        ...s,
-        skillMatch: calcSkillMatch(s.skills || [], requiredSkills),
-        currentStage: stageMap.get(s.id) ?? null,
-      }));
-  }, [students, participants, requiredSkills, search]);
+  const filteredStudents = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return students.filter((student) => {
+      if (!q) return true;
+      return student.studentName.toLowerCase().includes(q) || student.rollNo.toLowerCase().includes(q);
+    });
+  }, [students, search]);
+
+  async function handleSubmit() {
+    try {
+      setSubmitting(true);
+      await postJson<number>(facultyUrl(`/api/faculty/drives/${drive.id}/submit-drive`), {});
+      onSubmitted();
+    } catch (e: any) {
+      setError(e.message || 'Failed to submit drive to Placement HQ');
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <div className="sv-modal-overlay" onClick={onClose}>
-      <div className="sv-modal dd-eligible-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 760 }}>
-        {/* Header */}
+      <div className="sv-modal dd-eligible-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 900 }}>
         <div className="sv-modal-header">
           <div className="sv-modal-title-block">
             <div className="dd-modal-drive-icon"><Building2 size={20} color="#2563eb" /></div>
@@ -187,89 +156,106 @@ function EligibleModal({ drive, onClose }: { drive: Drive; onClose: () => void }
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span className={`badge ${STATUS_META[drive.status]?.cls ?? 'info'}`}>
-              {STATUS_META[drive.status]?.icon} {drive.status}
+            <span className={`badge ${STATUS_META[drive.status].cls}`}>
+              {STATUS_META[drive.status].icon} {drive.status}
             </span>
             <button className="sv-modal-close" onClick={onClose}><X size={18} /></button>
           </div>
         </div>
 
-        {/* Search */}
         <div style={{ padding: '12px 24px 0' }}>
           <div className="sv-search-box">
             <Search size={14} color="#94a3b8" />
-            <input placeholder="Search by name or roll number…" value={search}
-              onChange={e => setSearch(e.target.value)} />
+            <input
+              placeholder="Search by name or roll number…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
             {search && <button className="sv-search-clear" onClick={() => setSearch('')}><X size={12} /></button>}
           </div>
         </div>
 
-        {/* Body */}
         <div className="sv-modal-body" style={{ padding: '16px 24px 0', maxHeight: '60vh', overflowY: 'auto' }}>
           {error && (
             <div className="faculty-alert-banner"><AlertCircle size={16} /><span>{error}</span></div>
           )}
-          {loadingStudents ? (
+          {loading ? (
             <div style={{ padding: '8px 0' }}>
               {[...Array(5)].map((_, i) => (
                 <div key={i} className="sk-table-row">
-                  {[14, 24, 10, 12, 18, 12].map((w, j) => (
+                  {[12, 22, 10, 10, 12, 12, 18].map((w, j) => (
                     <div key={j} className="sk-box sk-text-sm" style={{ width: `${w}%` }} />
                   ))}
                 </div>
               ))}
             </div>
-          ) : enriched.length === 0 ? (
+          ) : filteredStudents.length === 0 ? (
             <div className="faculty-empty-state" style={{ padding: '40px 0' }}>
               <Users size={40} color="#94a3b8" />
-              <h4>No Eligible Students</h4>
-              <p>No verified students currently meet this drive's criteria</p>
+              <h4>No Students Found</h4>
+              <p>No student applications match the current search</p>
             </div>
           ) : (
             <div className="table-wrapper">
               <table className="dd-modal-table">
                 <thead>
-                  <tr><th>#</th><th>Student</th><th>CGPA</th><th>Arrears</th><th>Skill Match</th><th>Stage</th></tr>
+                  <tr>
+                    <th>#</th>
+                    <th>Student</th>
+                    <th>CGPA</th>
+                    <th>Stage</th>
+                    <th>Eligibility</th>
+                    <th>Faculty Approval</th>
+                    <th>Offer</th>
+                  </tr>
                 </thead>
                 <tbody>
-                  {enriched.map((s, idx) => (
-                    <tr key={s.id}>
+                  {filteredStudents.map((student, idx) => (
+                    <tr key={student.id}>
                       <td className="sm-row-num">{idx + 1}</td>
                       <td>
                         <div className="faculty-user-cell">
-                          <div className="faculty-avatar verified">{(s.name || '?').charAt(0).toUpperCase()}</div>
+                          <div className="faculty-avatar verified">{(student.studentName || '?').charAt(0).toUpperCase()}</div>
                           <div>
-                            <div style={{ fontWeight: 600, fontSize: 13 }}>{s.name}</div>
-                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{s.rollNo}</div>
+                            <div style={{ fontWeight: 600, fontSize: 13 }}>{student.studentName}</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{student.rollNo}</div>
                           </div>
                         </div>
                       </td>
                       <td>
-                        <span className={s.cgpa >= 7 ? 'faculty-cgpa good' : 'faculty-cgpa low'}>
-                          {s.cgpa?.toFixed(2) ?? '—'}
+                        <span className={student.cgpa >= 7 ? 'faculty-cgpa good' : 'faculty-cgpa low'}>
+                          {student.cgpa?.toFixed(2) ?? '—'}
                         </span>
                       </td>
                       <td>
-                        <span className={s.standingArrears > 0 ? 'faculty-arrears bad' : 'faculty-arrears ok'}>
-                          {s.standingArrears}
+                        <span className="badge" style={{
+                          background: `${STAGE_COLORS[student.stage]}18`,
+                          color: STAGE_COLORS[student.stage],
+                          border: `1px solid ${STAGE_COLORS[student.stage]}30`,
+                        }}>
+                          {student.stage}
                         </span>
                       </td>
-                      <td><SkillBar pct={s.skillMatch} /></td>
                       <td>
-                        {s.currentStage ? (
-                          <span className="badge" style={{
-                            background: `${STAGE_COLORS[s.currentStage]}18`,
-                            color: STAGE_COLORS[s.currentStage],
-                            border: `1px solid ${STAGE_COLORS[s.currentStage]}30`,
-                            display: 'inline-flex', alignItems: 'center', gap: 4,
-                            fontSize: 11, fontWeight: 700,
-                          }}>
-                            {s.currentStage === 'SELECTED' && <Star size={10} />}
-                            {s.currentStage}
-                          </span>
-                        ) : (
-                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Not Applied</span>
-                        )}
+                        <span className="badge" style={{
+                          background: student.isEligibleForPlacements ? '#dcfce7' : '#fee2e2',
+                          color: student.isEligibleForPlacements ? '#15803d' : '#b91c1c',
+                          border: `1px solid ${student.isEligibleForPlacements ? '#86efac' : '#fca5a5'}`,
+                        }}>
+                          {student.isEligibleForPlacements ? 'Eligible' : 'Ineligible'}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="badge" style={{
+                          background: student.facultyApproved ? '#dbeafe' : '#f8fafc',
+                          color: student.facultyApproved ? '#1d4ed8' : '#64748b',
+                          border: `1px solid ${student.facultyApproved ? '#93c5fd' : '#cbd5e1'}`,
+                        }}>
+                          {student.facultyApproved ? (student.submittedToAdmin ? 'Submitted' : 'Approved') : 'Pending'}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>
+                        {student.offerRole && student.offerCtc != null ? `${student.offerRole} · ₹${student.offerCtc} LPA` : '—'}
                       </td>
                     </tr>
                   ))}
@@ -279,29 +265,46 @@ function EligibleModal({ drive, onClose }: { drive: Drive; onClose: () => void }
           )}
         </div>
 
-        {/* Footer */}
         <div className="sv-modal-footer" style={{ justifyContent: 'space-between' }}>
           <span className="sv-result-count">
-            {loadingStudents ? '…' : `${enriched.length} eligible student${enriched.length !== 1 ? 's' : ''}`}
+            {loading ? '…' : `${filteredStudents.length} student${filteredStudents.length !== 1 ? 's' : ''}`}
           </span>
-          <button className="btn-secondary" onClick={onClose}>Close</button>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button className="btn-secondary" onClick={onClose}>Close</button>
+            <button className="btn-primary" onClick={handleSubmit} disabled={submitting}>
+              {submitting ? 'Submitting…' : 'Submit to Placement HQ'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-/* ══════════════════════════════════
-   DRIVE CARD
-══════════════════════════════════ */
-function DriveCard({ drive, onViewEligible }: { drive: Drive; onViewEligible: (d: Drive) => void }) {
-  const meta = STATUS_META[drive.status] ?? STATUS_META['UPCOMING'];
+function StageMiniStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div style={{
+      padding: '8px 10px',
+      borderRadius: 10,
+      background: '#f8fafc',
+      border: '1px solid #e2e8f0',
+      minWidth: 70,
+    }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>{label}</div>
+      <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', marginTop: 2 }}>{value}</div>
+    </div>
+  );
+}
+
+function DriveCard({ drive, onViewStudents }: { drive: Drive; onViewStudents: (d: Drive) => void }) {
+  const meta = STATUS_META[drive.status];
   return (
     <div className={`dd-card fade-in dd-card-${drive.status.toLowerCase()}`}>
       <div className="dd-card-top">
         <div className="dd-company-icon"><Building2 size={22} color="#2563eb" /></div>
         <span className={`badge ${meta.cls} dd-status-badge`}>{meta.icon} {drive.status}</span>
       </div>
+
       <div className="dd-card-body">
         <h3 className="dd-drive-title">{drive.title}</h3>
         <p className="dd-company-name">{drive.companyName}</p>
@@ -309,19 +312,16 @@ function DriveCard({ drive, onViewEligible }: { drive: Drive; onViewEligible: (d
           <Briefcase size={13} color="#64748b" />
           <span className="dd-role">{drive.role || '—'}</span>
         </div>
-      </div>
-      <div className="dd-stats-row">
-        <div className="dd-stat">
-          <TrendingUp size={14} color="#10b981" />
-          <div className="dd-stat-body">
-            <span className="dd-stat-label">CTC</span>
-            <span className="dd-stat-value ctc">₹{drive.ctcLpa ?? '—'} LPA</span>
-          </div>
+        <div style={{ marginTop: 8, fontSize: 12, color: '#64748b', fontWeight: 600 }}>
+          Apply before: {formatDate(drive.applicationDeadline)}
         </div>
+      </div>
+
+      <div className="dd-stats-row">
         <div className="dd-stat">
           <Users size={14} color="#6366f1" />
           <div className="dd-stat-body">
-            <span className="dd-stat-label">Dept. Applicants</span>
+            <span className="dd-stat-label">Applied</span>
             <span className="dd-stat-value">{drive.totalDepartmentApplicants ?? 0}</span>
           </div>
         </div>
@@ -332,9 +332,25 @@ function DriveCard({ drive, onViewEligible }: { drive: Drive; onViewEligible: (d
             <span className="dd-stat-value selected">{drive.selectedDepartmentApplicants ?? 0}</span>
           </div>
         </div>
+        <div className="dd-stat">
+          <Building2 size={14} color="#10b981" />
+          <div className="dd-stat-body">
+            <span className="dd-stat-label">CTC</span>
+            <span className="dd-stat-value ctc">₹{drive.ctcLpa ?? '—'} LPA</span>
+          </div>
+        </div>
       </div>
-      <button className="dd-eligible-btn" onClick={() => onViewEligible(drive)}>
-        <Eye size={14} /> View Eligible Students
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 8, marginBottom: 14 }}>
+        <StageMiniStat label="Eligible" value={drive.stageCounts?.ELIGIBLE ?? 0} />
+        <StageMiniStat label="Assess" value={drive.stageCounts?.ASSESSMENT ?? 0} />
+        <StageMiniStat label="Tech" value={drive.stageCounts?.TECHNICAL ?? 0} />
+        <StageMiniStat label="HR" value={drive.stageCounts?.HR ?? 0} />
+        <StageMiniStat label="Selected" value={drive.stageCounts?.SELECTED ?? 0} />
+      </div>
+
+      <button className="dd-eligible-btn" onClick={() => onViewStudents(drive)}>
+        <Eye size={14} /> View Students
       </button>
     </div>
   );
@@ -368,150 +384,107 @@ function DriveCardSkeleton() {
   );
 }
 
-/* ══════════════════════════════════
-   MAIN PAGE
-══════════════════════════════════ */
 export default function DepartmentDrives({ onNavigate }: { onNavigate?: (view: string) => void }) {
-  const [loading, setLoading]             = useState(true);
-  const [drives, setDrives]               = useState<Drive[]>([]);
-  const [statusFilter, setStatusFilter]   = useState<StatusKey>('ALL');
-  const [search, setSearch]               = useState('');
+  const [loading, setLoading] = useState(true);
+  const [drives, setDrives] = useState<Drive[]>([]);
+  const [statusFilter, setStatusFilter] = useState<StatusKey>('ALL');
+  const [search, setSearch] = useState('');
   const [selectedDrive, setSelectedDrive] = useState<Drive | null>(null);
-  const [toast, setToast]                 = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
-  const [refreshKey, setRefreshKey]       = useState(0);
-  const [dataSource, setDataSource]       = useState<string>('');
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     let active = true;
     (async () => {
       try {
         setLoading(true);
-        setDrives([]);
-
-        // ── Strategy 1: department-scoped drives ──
-        // GET /api/faculty/drives?facultyEmail=
-        // Returns FacultyDriveDTO[] with: id, title, companyName, role, ctcLpa, status,
-        //         totalDepartmentApplicants, selectedDepartmentApplicants
-        const res1 = await getJson<any[]>(facultyUrl('/api/faculty/drives'));
+        const primary = await getJson<any[]>(facultyUrl('/api/faculty/drives'));
         if (!active) return;
-
-        const raw1 = res1.data || [];
-        if (raw1.length > 0) {
-          setDrives(raw1.map(normaliseDrive));
-          setDataSource('department');
-          setLoading(false);
-          return;
-        }
-
-        // ── Strategy 2: active drives (UPCOMING + ONGOING) ──
-        // GET /api/faculty/drives/active?facultyEmail=
-        // Returns List<Object> where each object is a Map with: id, jobTitle, companyName,
-        //         ctcLpa, status, eligibilityCriteria
-        try {
-          const res2 = await getJson<any[]>(facultyUrl('/api/faculty/drives/active'));
-          if (!active) return;
-          const raw2 = res2.data || [];
-          if (raw2.length > 0) {
-            setDrives(raw2.map(normaliseDrive));
-            setDataSource('active');
-            setLoading(false);
-            return;
-          }
-        } catch { /* fall through to strategy 3 */ }
-
-        // ── Strategy 3: admin all-drives fallback ──
-        // GET /api/admin/drives
-        try {
-          const res3 = await getJson<any[]>('/api/admin/drives');
-          if (!active) return;
-          const raw3 = res3.data || [];
-          setDrives(raw3.map(normaliseDrive));
-          setDataSource('admin');
-        } catch {
-          if (active) setDrives([]);
-        }
-
+        setDrives((primary.data || []).map(normaliseDrive));
       } catch (e: any) {
-        if (active) setToast({ msg: e.message || 'Failed to load drives', type: 'error' });
+        if (!active) return;
+        try {
+          const fallback = await getJson<any[]>('/api/admin/drives');
+          if (!active) return;
+          setDrives((fallback.data || []).map(normaliseDrive));
+        } catch {
+          setDrives([]);
+          setToast({ msg: e.message || 'Failed to load department drives', type: 'error' });
+        }
       } finally {
         if (active) setLoading(false);
       }
     })();
+
     return () => { active = false; };
   }, [refreshKey]);
 
   const displayed = useMemo(() => {
     let list = drives;
-    if (statusFilter !== 'ALL') list = list.filter(d => d.status === statusFilter);
+    if (statusFilter !== 'ALL') list = list.filter((drive) => drive.status === statusFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
-      list = list.filter(d =>
-        d.title.toLowerCase().includes(q) ||
-        d.companyName.toLowerCase().includes(q) ||
-        (d.role ?? '').toLowerCase().includes(q)
+      list = list.filter((drive) =>
+        drive.title.toLowerCase().includes(q) ||
+        drive.companyName.toLowerCase().includes(q) ||
+        drive.role.toLowerCase().includes(q)
       );
     }
     return list;
   }, [drives, statusFilter, search]);
 
   const counts: Record<StatusKey, number> = {
-    ALL:       drives.length,
-    UPCOMING:  drives.filter(d => d.status === 'UPCOMING').length,
-    ONGOING:   drives.filter(d => d.status === 'ONGOING').length,
-    COMPLETED: drives.filter(d => d.status === 'COMPLETED').length,
+    ALL: drives.length,
+    UPCOMING: drives.filter((drive) => drive.status === 'UPCOMING').length,
+    ONGOING: drives.filter((drive) => drive.status === 'ONGOING').length,
+    COMPLETED: drives.filter((drive) => drive.status === 'COMPLETED').length,
   };
 
   const tabs: { key: StatusKey; label: string; color: string }[] = [
-    { key: 'ALL',       label: 'All Drives', color: '#6366f1' },
-    { key: 'ONGOING',   label: 'Ongoing',    color: '#10b981' },
-    { key: 'UPCOMING',  label: 'Upcoming',   color: '#3b82f6' },
-    { key: 'COMPLETED', label: 'Completed',  color: '#94a3b8' },
+    { key: 'ALL', label: 'All Drives', color: '#6366f1' },
+    { key: 'ONGOING', label: 'Ongoing', color: '#10b981' },
+    { key: 'UPCOMING', label: 'Upcoming', color: '#3b82f6' },
+    { key: 'COMPLETED', label: 'Completed', color: '#94a3b8' },
   ];
 
   return (
     <FacultyLayout activeNav="drives" onNavigate={onNavigate}>
       <div className="content">
-
-        {/* Header */}
         <div className="dd-page-header fade-in">
           <div>
             <h1 className="page-title">Department Drives</h1>
-            <p className="page-subtitle">
-              Placement drives for your department — view eligible students per drive
-              {dataSource === 'active' && <span className="dd-source-note"> · Showing active drives</span>}
-              {dataSource === 'admin'  && <span className="dd-source-note"> · Showing all available drives</span>}
-            </p>
+            <p className="page-subtitle">Track drive cards, stage-wise counts, and submitted student lists</p>
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <ExportButton
               disabled={drives.length === 0}
               opts={{
-                title:    'Department Drives Report',
+                title: 'Department Drives Report',
                 subtitle: `Total drives: ${drives.length} · Generated by Faculty Portal`,
                 filename: 'department-drives',
                 columns: [
-                  { header: '#',                  key: '_idx'                       },
-                  { header: 'Drive Title',         key: 'title'                      },
-                  { header: 'Company',             key: 'companyName'                },
-                  { header: 'Role',                key: 'role'                       },
-                  { header: 'CTC (LPA)',           key: 'ctcLpa'                     },
-                  { header: 'Status',              key: 'status'                     },
-                  { header: 'Dept. Applicants',    key: 'totalDepartmentApplicants'  },
-                  { header: 'Selected',            key: 'selectedDepartmentApplicants'},
+                  { header: '#', key: '_idx' },
+                  { header: 'Drive Title', key: 'title' },
+                  { header: 'Company', key: 'companyName' },
+                  { header: 'Role', key: 'role' },
+                  { header: 'CTC (LPA)', key: 'ctcLpa' },
+                  { header: 'Status', key: 'status' },
+                  { header: 'Applied', key: 'totalDepartmentApplicants' },
+                  { header: 'Selected', key: 'selectedDepartmentApplicants' },
                 ],
-                rows: drives.map((d, i) => ({
-                  _idx:                       i + 1,
-                  title:                      d.title,
-                  companyName:                d.companyName,
-                  role:                       d.role ?? '—',
-                  ctcLpa:                     d.ctcLpa,
-                  status:                     d.status,
-                  totalDepartmentApplicants:  d.totalDepartmentApplicants,
-                  selectedDepartmentApplicants: d.selectedDepartmentApplicants,
+                rows: drives.map((drive, index) => ({
+                  _idx: index + 1,
+                  title: drive.title,
+                  companyName: drive.companyName,
+                  role: drive.role,
+                  ctcLpa: drive.ctcLpa,
+                  status: drive.status,
+                  totalDepartmentApplicants: drive.totalDepartmentApplicants,
+                  selectedDepartmentApplicants: drive.selectedDepartmentApplicants,
                 })),
               }}
             />
-            <button className="btn-secondary" onClick={() => setRefreshKey(k => k + 1)} disabled={loading}>
+            <button className="btn-secondary" onClick={() => setRefreshKey((current) => current + 1)} disabled={loading}>
               <RefreshCw size={15} style={loading ? { animation: 'spin 1s linear infinite' } : {}} />
               Refresh
             </button>
@@ -521,18 +494,21 @@ export default function DepartmentDrives({ onNavigate }: { onNavigate?: (view: s
           </div>
         </div>
 
-        {/* Filter bar */}
         <div className="sv-filter-card fade-in">
           <div className="sv-tabs">
-            {tabs.map(t => (
-              <button key={t.key}
-                className={`sv-tab ${statusFilter === t.key ? 'active' : ''}`}
-                style={statusFilter === t.key ? { borderColor: t.color, color: t.color } : {}}
-                onClick={() => setStatusFilter(t.key)}>
-                {t.label}
-                <span className="sv-tab-count"
-                  style={statusFilter === t.key ? { background: t.color, color: '#fff' } : {}}>
-                  {counts[t.key]}
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                className={`sv-tab ${statusFilter === tab.key ? 'active' : ''}`}
+                style={statusFilter === tab.key ? { borderColor: tab.color, color: tab.color } : {}}
+                onClick={() => setStatusFilter(tab.key)}
+              >
+                {tab.label}
+                <span
+                  className="sv-tab-count"
+                  style={statusFilter === tab.key ? { background: tab.color, color: '#fff' } : {}}
+                >
+                  {counts[tab.key]}
                 </span>
               </button>
             ))}
@@ -540,11 +516,12 @@ export default function DepartmentDrives({ onNavigate }: { onNavigate?: (view: s
           <div className="sv-search-row">
             <div className="sv-search-box">
               <Search size={15} color="#94a3b8" />
-              <input placeholder="Search by title, company, or role…"
-                value={search} onChange={e => setSearch(e.target.value)} />
-              {search && (
-                <button className="sv-search-clear" onClick={() => setSearch('')}><X size={13} /></button>
-              )}
+              <input
+                placeholder="Search by title, company, or role…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              {search && <button className="sv-search-clear" onClick={() => setSearch('')}><X size={13} /></button>}
             </div>
             <span className="sv-result-count">
               {loading ? '…' : `${displayed.length} drive${displayed.length !== 1 ? 's' : ''}`}
@@ -552,10 +529,9 @@ export default function DepartmentDrives({ onNavigate }: { onNavigate?: (view: s
           </div>
         </div>
 
-        {/* Grid */}
         {loading ? (
           <div className="dd-grid">
-            {[...Array(6)].map((_, i) => <DriveCardSkeleton key={i} />)}
+            {[...Array(6)].map((_, index) => <DriveCardSkeleton key={index} />)}
           </div>
         ) : displayed.length === 0 ? (
           <div className="faculty-empty-state dd-empty fade-in">
@@ -574,24 +550,28 @@ export default function DepartmentDrives({ onNavigate }: { onNavigate?: (view: s
                 <Briefcase size={48} color="#94a3b8" />
                 <h4>No Drives Available</h4>
                 <p>No placement drives are currently available for your department</p>
-                <button className="btn-secondary" onClick={() => setRefreshKey(k => k + 1)} style={{ marginTop: 8 }}>
-                  <RefreshCw size={14} /> Retry
-                </button>
               </>
             )}
           </div>
         ) : (
           <div className="dd-grid fade-in">
-            {displayed.map(drive => (
-              <DriveCard key={drive.id} drive={drive} onViewEligible={setSelectedDrive} />
+            {displayed.map((drive) => (
+              <DriveCard key={drive.id} drive={drive} onViewStudents={setSelectedDrive} />
             ))}
           </div>
         )}
-
       </div>
 
       {selectedDrive && (
-        <EligibleModal drive={selectedDrive} onClose={() => setSelectedDrive(null)} />
+        <DriveStudentsModal
+          drive={selectedDrive}
+          onClose={() => setSelectedDrive(null)}
+          onSubmitted={() => {
+            setToast({ msg: 'Drive submitted to Placement HQ', type: 'success' });
+            setSelectedDrive(null);
+            setRefreshKey((current) => current + 1);
+          }}
+        />
       )}
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
     </FacultyLayout>

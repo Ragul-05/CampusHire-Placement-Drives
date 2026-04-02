@@ -44,5 +44,5 @@ public class PlacementDriveDto {
 
     // Application status for this student
     private Boolean hasApplied;
-    private String  applicationStage;   // APPLIED / ASSESSMENT / TECHNICAL / HR / SELECTED
+    private String  applicationStage;   // ELIGIBLE / ASSESSMENT / TECHNICAL / HR / SELECTED
 }

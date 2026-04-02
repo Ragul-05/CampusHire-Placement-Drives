@@ -9,7 +9,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 import '../styles/dashboard.css';
-import { getJson, postJson } from '../utils/api';
+import { getJson } from '../utils/api';
 import StudentLayout from '../components/StudentLayout';
 
 /* ══════════════════════════════════
@@ -61,7 +61,7 @@ type Application = {
   driveId: number;
   driveTitle: string;
   companyName: string;
-  stage: 'APPLIED' | 'ASSESSMENT' | 'TECHNICAL' | 'HR' | 'SELECTED' | 'REJECTED';
+  stage: 'ELIGIBLE' | 'ASSESSMENT' | 'TECHNICAL' | 'HR' | 'SELECTED' | 'REJECTED';
   appliedAt: string;
   lastUpdatedAt: string;
 };
@@ -83,7 +83,7 @@ type DashboardStats = {
    CONSTANTS
 ══════════════════════════════════ */
 const STAGE_COLORS: Record<string, string> = {
-  APPLIED:    '#3b82f6',
+  ELIGIBLE:   '#10b981',
   ASSESSMENT: '#f59e0b',
   TECHNICAL:  '#8b5cf6',
   HR:         '#06b6d4',
@@ -132,7 +132,7 @@ function VerificationBanner({ status, remarks }: { status: string; remarks?: str
       <CheckCircle2 size={18} />
       <div>
         <strong>Profile Verified</strong>
-        <p>Your profile has been verified by faculty. You can now apply for placement drives.</p>
+        <p>Your profile has been verified by faculty. Eligible drives will be mapped automatically.</p>
       </div>
     </div>
   );
@@ -228,8 +228,8 @@ function CompletionRing({ pct }: { pct: number }) {
 }
 
 /* ── Drive Card ── */
-function DriveCard({ drive, onApply, applying }: {
-  drive: Drive; onApply: (id: number) => void; applying: boolean;
+function DriveCard({ drive }: {
+  drive: Drive;
 }) {
   const statusColor: Record<string, string> = {
     UPCOMING: '#3b82f6', ONGOING: '#10b981', COMPLETED: '#94a3b8'
@@ -258,10 +258,9 @@ function DriveCard({ drive, onApply, applying }: {
       )}
       <button
         className={`sd-apply-btn ${drive.isEligible ? 'eligible' : 'disabled'}`}
-        disabled={!drive.isEligible || applying}
-        onClick={() => drive.isEligible && onApply(drive.id)}
+        disabled
       >
-        {applying ? 'Applying…' : drive.isEligible ? 'Apply Now' : 'Not Eligible'}
+        {drive.isEligible ? 'Eligible' : 'Not Eligible'}
       </button>
     </div>
   );
@@ -295,7 +294,6 @@ export default function StudentDashboard() {
   const [drives,       setDrives]       = useState<Drive[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [stats,        setStats]        = useState<DashboardStats | null>(null);
-  const [applying,     setApplying]     = useState<number | null>(null);
   const [toast,        setToast]        = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const [refreshKey,   setRefreshKey]   = useState(0);
 
@@ -341,24 +339,6 @@ export default function StudentDashboard() {
   }, []);
 
   /* ── Apply for drive ── */
-  const handleApply = async (driveId: number) => {
-    if (profile?.verificationStatus !== 'VERIFIED') {
-      showToast('Your profile must be verified before applying', 'error');
-      return;
-    }
-    try {
-      setApplying(driveId);
-      // POST /api/student/applications/{driveId}/apply?email=
-      await postJson(`/api/student/applications/${driveId}/apply?email=${encodeURIComponent(email)}`, {});
-      showToast('Application submitted successfully!');
-      setRefreshKey(k => k + 1);
-    } catch (e: any) {
-      showToast(e.message || 'Failed to apply', 'error');
-    } finally {
-      setApplying(null);
-    }
-  };
-
   /* ── Derived chart data ── */
   const completion = calcCompletion(profile);
 
@@ -417,7 +397,7 @@ export default function StudentDashboard() {
             </h1>
             <p className="sd-welcome-sub">
               {profile?.verificationStatus === 'VERIFIED'
-                ? `You're eligible for ${eligibleCount} drive${eligibleCount !== 1 ? 's' : ''} — start applying!`
+                ? `You're eligible for ${eligibleCount} drive${eligibleCount !== 1 ? 's' : ''} — tracking is automatic.`
                 : 'Complete your profile to unlock placement drives.'}
             </p>
           </div>
@@ -443,9 +423,9 @@ export default function StudentDashboard() {
               icon={<Briefcase size={20} />}
               color="#6366f1"
             />
-            <KpiCard
-              label="Applications"
-              value={appliedCount}
+              <KpiCard
+                label="Drive Stages"
+                value={appliedCount}
               sub={latestApp ? `Latest: ${latestApp.companyName}` : `${ongoingDriveCount} ongoing drives`}
               icon={<FileText size={20} />}
               color="#3b82f6"
@@ -566,7 +546,7 @@ export default function StudentDashboard() {
               <div className="sd-insight-title">Smart Insights</div>
               <div className="sd-insight-text">
                 {applications.length === 0
-                  ? 'You have not applied to any drives yet. Browse open drives and start applying!'
+                  ? 'You do not have any eligible drive stages yet. They will appear automatically.'
                   : currentStage === 'SELECTED'
                   ? '🎉 Congratulations! You have been selected. Check your offer details.'
                   : `Your latest application is at stage: ${currentStage}. ${selectedCount > 0 ? `You have ${selectedCount} selection(s)!` : 'Keep pushing through the rounds.'}`}
@@ -584,7 +564,7 @@ export default function StudentDashboard() {
           <div className="sd-section-card fade-in">
             <div className="sd-section-header">
               <h3 className="sd-section-title">
-                <Briefcase size={16} color="#6366f1" /> Open Drives
+                <Briefcase size={16} color="#6366f1" /> Eligible Drives
               </h3>
               <span className="sd-section-count">{upcomingDrives.length}</span>
             </div>
@@ -604,7 +584,7 @@ export default function StudentDashboard() {
             ) : upcomingDrives.length === 0 ? (
               <div className="sd-section-empty">
                 <Briefcase size={32} color="#cbd5e1" />
-                <p>No open drives right now</p>
+                <p>No eligible drives right now</p>
               </div>
             ) : (
               <div className="sd-drive-list">
@@ -627,10 +607,9 @@ export default function StudentDashboard() {
                       {drive.isEligible && (
                         <button
                           className="sd-apply-mini"
-                          disabled={applying === drive.id}
-                          onClick={() => handleApply(drive.id)}
+                          disabled
                         >
-                          {applying === drive.id ? '…' : 'Apply'}
+                          Eligible
                         </button>
                       )}
                     </div>
@@ -664,7 +643,7 @@ export default function StudentDashboard() {
             ) : recentApps.length === 0 ? (
               <div className="sd-section-empty">
                 <FileText size={32} color="#cbd5e1" />
-                <p>No applications submitted yet</p>
+                <p>No drive stages available yet</p>
               </div>
             ) : (
               <div className="sd-drive-list">
@@ -729,7 +708,7 @@ export default function StudentDashboard() {
                       <div className="sd-notif-icon success"><CheckCircle2 size={14} /></div>
                       <div>
                         <div className="sd-notif-text">Profile verified!</div>
-                        <div className="sd-notif-sub">You can now apply to eligible drives</div>
+                        <div className="sd-notif-sub">Eligible drives will now appear automatically</div>
                       </div>
                     </div>
                   )}

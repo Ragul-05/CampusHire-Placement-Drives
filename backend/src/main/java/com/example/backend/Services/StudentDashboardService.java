@@ -30,11 +30,16 @@ public class StudentDashboardService {
     @Autowired
     private DriveApplicationRepository driveApplicationRepository;
 
+    @Autowired
+    private DriveEligibilitySyncService driveEligibilitySyncService;
+
     public Map<String, Object> getDashboardStats(String email) {
         Map<String, Object> stats = new HashMap<>();
 
         com.example.backend.Models.StudentProfile profile = studentProfileRepository.findByUserEmail(email)
                 .orElseThrow(() -> new com.example.backend.Exceptions.ResourceNotFoundException("Student not found"));
+
+        driveEligibilitySyncService.syncEligibleMappingsForStudent(profile);
 
         long totalDrives = driveRepository.countByStatusIn(
                 java.util.List.of(com.example.backend.Models.enums.DriveStatus.ONGOING, 

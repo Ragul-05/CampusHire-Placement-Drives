@@ -666,20 +666,20 @@ export default function DriveFiltering({ onNavigate }: { onNavigate?: (view: any
                                className={`df-approve-toggle ${s.facultyApproved ? 'approved' : ''}`}
                                onClick={() => toggleApproval(s.id, s.facultyApproved)}
                                title={s.facultyApproved ? 'Revoke Approval' : 'Approve for this Drive'}
-                               disabled={!s.hasApplied || !s.eligible}
+                               disabled={!s.eligible}
                              >
                                {s.facultyApproved ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
                              </button>
                            </td>
                            <td style={{ textAlign: 'center' }}>
-                             {s.hasApplied && s.currentStage && s.currentStage !== 'SELECTED' ? (
+                             {s.currentStage && s.currentStage !== 'SELECTED' ? (
                                <select
                                  className="stage-select"
                                  value={s.currentStage}
                                  onChange={e => updateStage(s.id, e.target.value)}
                                  disabled={!s.facultyApproved}
                                >
-                                 <option value="APPLIED">Applied</option>
+                                 <option value="ELIGIBLE">Eligible</option>
                                  <option value="ASSESSMENT">Assessment</option>
                                  <option value="TECHNICAL">Technical</option>
                                  <option value="HR">HR Round</option>

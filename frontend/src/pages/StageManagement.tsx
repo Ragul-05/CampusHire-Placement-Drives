@@ -11,7 +11,7 @@ import FacultyLayout from '../components/FacultyLayout';
 /* ══════════════════════════════
    TYPES — aligned with backend DTOs
 ══════════════════════════════ */
-type Stage = 'APPLIED' | 'ASSESSMENT' | 'TECHNICAL' | 'HR' | 'SELECTED';
+type Stage = 'ELIGIBLE' | 'ASSESSMENT' | 'TECHNICAL' | 'HR' | 'SELECTED';
 
 /* FacultyApplicationDTO fields:
    id, studentId, studentName, rollNo, driveId,
@@ -43,17 +43,17 @@ type Drive = {
 /* ══════════════════════════════
    CONSTANTS
 ══════════════════════════════ */
-const STAGE_ORDER: Stage[] = ['APPLIED', 'ASSESSMENT', 'TECHNICAL', 'HR', 'SELECTED'];
+const STAGE_ORDER: Stage[] = ['ELIGIBLE', 'ASSESSMENT', 'TECHNICAL', 'HR', 'SELECTED'];
 
 const STAGE_META: Record<Stage, { label: string; cls: string; icon: JSX.Element; color: string }> = {
-  APPLIED:    { label: 'Applied',    cls: 'info',    icon: <BookOpen size={11} />,  color: '#3b82f6' },
+  ELIGIBLE:   { label: 'Eligible',   cls: 'success', icon: <CheckCircle2 size={11} />, color: '#10b981' },
   ASSESSMENT: { label: 'Assessment', cls: 'warning', icon: <Clock size={11} />,     color: '#f59e0b' },
   TECHNICAL:  { label: 'Technical',  cls: 'warning', icon: <Layers size={11} />,    color: '#8b5cf6' },
   HR:         { label: 'HR Round',   cls: 'warning', icon: <Users size={11} />,     color: '#06b6d4' },
   SELECTED:   { label: 'Selected',   cls: 'success', icon: <Star size={11} />,      color: '#10b981' },
 };
 
-const ASSIGNABLE_STAGES: Stage[] = ['APPLIED', 'ASSESSMENT', 'TECHNICAL', 'HR'];
+const ASSIGNABLE_STAGES: Stage[] = ['ELIGIBLE', 'ASSESSMENT', 'TECHNICAL', 'HR'];
 
 /* ══════════════════════════════
    HELPERS
@@ -259,7 +259,7 @@ export default function StageManagement({ onNavigate }: { onNavigate?: (view: an
 
   const stageTabs: { key: Stage | 'ALL'; label: string; color: string }[] = [
     { key: 'ALL',        label: 'All',        color: '#6366f1' },
-    { key: 'APPLIED',    label: 'Applied',    color: '#3b82f6' },
+    { key: 'ELIGIBLE',   label: 'Eligible',   color: '#10b981' },
     { key: 'ASSESSMENT', label: 'Assessment', color: '#f59e0b' },
     { key: 'TECHNICAL',  label: 'Technical',  color: '#8b5cf6' },
     { key: 'HR',         label: 'HR Round',   color: '#06b6d4' },

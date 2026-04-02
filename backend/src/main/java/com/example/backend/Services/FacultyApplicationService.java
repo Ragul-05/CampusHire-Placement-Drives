@@ -94,6 +94,8 @@ public class FacultyApplicationService {
             return false;
 
         // Allowed transitions
+        if (current == ApplicationStage.ELIGIBLE && target == ApplicationStage.ASSESSMENT)
+            return true;
         if (current == ApplicationStage.APPLIED && target == ApplicationStage.ASSESSMENT)
             return true;
         if (current == ApplicationStage.ASSESSMENT && target == ApplicationStage.TECHNICAL)

@@ -18,7 +18,8 @@ public class DriveApplicationDto {
     private String companyName;
     private String companyIndustry;
     private Double ctcLpa;
-    private String stage; // APPLIED, ASSESSMENT, TECHNICAL, HR, SELECTED, REJECTED
+    private String stage; // ELIGIBLE, ASSESSMENT, TECHNICAL, HR, SELECTED, REJECTED
+    private String driveStatus;
     private LocalDateTime appliedAt;
     private LocalDateTime lastUpdatedAt;
     private LocalDateTime applicationDeadline;

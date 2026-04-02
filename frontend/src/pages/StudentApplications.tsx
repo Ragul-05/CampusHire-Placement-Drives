@@ -22,11 +22,11 @@ interface ApplicationDto {
 /* ─────────────────────────────────────────────
    CONSTANTS
 ───────────────────────────────────────────── */
-const PROGRESS_STAGES = ['APPLIED', 'ASSESSMENT', 'TECHNICAL', 'HR', 'SELECTED'];
-const ALL_STAGES = ['APPLIED', 'ASSESSMENT', 'TECHNICAL', 'HR', 'SELECTED', 'REJECTED'];
+const PROGRESS_STAGES = ['ELIGIBLE', 'ASSESSMENT', 'TECHNICAL', 'HR', 'SELECTED'];
+const ALL_STAGES = ['ELIGIBLE', 'ASSESSMENT', 'TECHNICAL', 'HR', 'SELECTED', 'REJECTED'];
 
 const STAGE_CFG: Record<string, { bg: string; text: string; border: string; icon: string; label: string; dot: string }> = {
-  APPLIED:    { bg: '#eff6ff', text: '#1e40af', border: '#bfdbfe', icon: '📋', label: 'Applied',    dot: '#3b82f6' },
+  ELIGIBLE:   { bg: '#dcfce7', text: '#15803d', border: '#86efac', icon: '✅', label: 'Eligible',   dot: '#16a34a' },
   ASSESSMENT: { bg: '#fef3c7', text: '#92400e', border: '#fde68a', icon: '📝', label: 'Assessment', dot: '#f59e0b' },
   TECHNICAL:  { bg: '#ede9fe', text: '#5b21b6', border: '#ddd6fe', icon: '💻', label: 'Technical',  dot: '#7c3aed' },
   HR:         { bg: '#d1fae5', text: '#065f46', border: '#6ee7b7', icon: '🤝', label: 'HR Round',   dot: '#10b981' },
@@ -45,7 +45,7 @@ function fmtDate(iso: string) {
 ───────────────────────────────────────────── */
 function StageProgressBar({ stage }: { stage: string }) {
   const isRejected = stage === 'REJECTED';
-  const current = PROGRESS_STAGES.indexOf(isRejected ? 'APPLIED' : stage);
+  const current = PROGRESS_STAGES.indexOf(isRejected ? 'ELIGIBLE' : stage);
 
   if (isRejected) {
     return (
@@ -148,8 +148,6 @@ function SkeletonRow() {
    MAIN COMPONENT
 ───────────────────────────────────────────── */
 export default function StudentApplications() {
-  const email = localStorage.getItem('email') || '';
-
   const [apps,    setApps]    = useState<ApplicationDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [stageF,  setStageF]  = useState('ALL');
@@ -160,14 +158,14 @@ export default function StudentApplications() {
   const loadApps = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await getJson<ApplicationDto[]>(`/api/student/applications?email=${encodeURIComponent(email)}`);
+      const res = await getJson<ApplicationDto[]>('/api/student/applications');
       setApps(res.data || []);
     } catch {
       setApps([]);
     } finally {
       setLoading(false);
     }
-  }, [email]);
+  }, []);
 
   useEffect(() => { loadApps(); }, [loadApps]);
 

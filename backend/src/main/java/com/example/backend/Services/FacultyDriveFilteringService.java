@@ -53,13 +53,16 @@ public class FacultyDriveFilteringService {
     @Autowired
     private StudentProfileService studentProfileService;
 
+    @Autowired
+    private DriveEligibilitySyncService driveEligibilitySyncService;
+
     public List<FacultyDriveDTO> getActiveDrivesForFaculty(String facultyEmail) {
         User faculty = getAuthenticatedFaculty(facultyEmail);
         Long departmentId = faculty.getDepartment().getId();
 
-        return placementDriveRepository
-                .findByStatusInAndAllowedDepartmentId(List.of(DriveStatus.UPCOMING, DriveStatus.ONGOING), departmentId)
-                .stream()
+        return placementDriveRepository.findAll().stream()
+                .filter(drive -> List.of(DriveStatus.UPCOMING, DriveStatus.ONGOING).contains(drive.getStatus()))
+                .filter(drive -> isDriveVisibleToDepartment(drive, departmentId))
                 .map(this::mapDriveToDTO)
                 .collect(Collectors.toList());
     }
@@ -68,8 +71,8 @@ public class FacultyDriveFilteringService {
         User faculty = getAuthenticatedFaculty(facultyEmail);
         Long departmentId = faculty.getDepartment().getId();
 
-        return placementDriveRepository.findByAllowedDepartmentId(departmentId)
-                .stream()
+        return placementDriveRepository.findAll().stream()
+                .filter(drive -> isDriveVisibleToDepartment(drive, departmentId))
                 .map(this::mapDriveToDTO)
                 .collect(Collectors.toList());
     }
@@ -81,6 +84,8 @@ public class FacultyDriveFilteringService {
 
         PlacementDrive drive = placementDriveRepository.findById(driveId)
                 .orElseThrow(() -> new ResourceNotFoundException("Placement drive not found"));
+
+        driveEligibilitySyncService.syncEligibleMappingsForDrive(drive);
 
         List<StudentProfile> departmentStudents = studentProfileRepository.findByUserDepartmentId(departmentId);
         Map<Long, DriveApplication> applications = driveApplicationRepository
@@ -133,9 +138,10 @@ public class FacultyDriveFilteringService {
             throw new IllegalArgumentException(evaluation.getPrimaryReason());
         }
 
+        driveEligibilitySyncService.syncEligibleMappingsForDrive(drive);
         DriveApplication application = driveApplicationRepository
                 .findByStudentProfileIdAndDriveId(studentId, driveId)
-                .orElseThrow(() -> new IllegalArgumentException("Student must apply for the drive before faculty approval."));
+                .orElseThrow(() -> new IllegalArgumentException("Eligible student mapping was not found for this drive."));
 
         application.setFacultyApproved(approved);
         application.setLastUpdatedAt(LocalDateTime.now());
@@ -160,6 +166,10 @@ public class FacultyDriveFilteringService {
         if (actor.getRole() == Role.FACULTY && targetStage == ApplicationStage.SELECTED) {
             throw new UnauthorizedActionException("Faculty cannot mark students as SELECTED. Only Placement Head can do this.");
         }
+
+        PlacementDrive drive = placementDriveRepository.findById(driveId)
+                .orElseThrow(() -> new ResourceNotFoundException("Drive not found"));
+        driveEligibilitySyncService.syncEligibleMappingsForDrive(drive);
 
         DriveApplication application = driveApplicationRepository
                 .findByStudentProfileIdAndDriveId(studentId, driveId)
@@ -267,5 +277,21 @@ public class FacultyDriveFilteringService {
                         ? student.getSkills().stream().map(StudentSkill::getSkillName).collect(Collectors.toList())
                         : List.of())
                 .build();
+    }
+
+    private boolean isDriveVisibleToDepartment(PlacementDrive drive, Long departmentId) {
+        if (drive.getEligibilityCriteria() == null
+                || drive.getEligibilityCriteria().getAllowedDepartments() == null
+                || drive.getEligibilityCriteria().getAllowedDepartments().isEmpty()) {
+            return true;
+        }
+
+        boolean departmentAllowed = drive.getEligibilityCriteria().getAllowedDepartments().stream()
+                .anyMatch(department -> departmentId.equals(department.getId()));
+        if (departmentAllowed) {
+            return true;
+        }
+
+        return !driveApplicationRepository.findByDriveIdAndStudentProfileUserDepartmentId(drive.getId(), departmentId).isEmpty();
     }
 }

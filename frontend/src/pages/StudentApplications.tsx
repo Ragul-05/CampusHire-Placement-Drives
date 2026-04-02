@@ -34,6 +34,13 @@ const STAGE_CFG: Record<string, { bg: string; text: string; border: string; icon
   REJECTED:   { bg: '#fee2e2', text: '#991b1b', border: '#fca5a5', icon: '❌', label: 'Rejected',   dot: '#ef4444' },
 };
 
+function normalizeStage(stage?: string | null) {
+  if (!stage) return 'ELIGIBLE';
+  const upper = String(stage).toUpperCase();
+  if (upper === 'APPLIED') return 'ELIGIBLE';
+  return STAGE_CFG[upper] ? upper : 'ELIGIBLE';
+}
+
 function fmtDate(iso: string) {
   if (!iso) return '—';
   try { return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }); }
@@ -44,8 +51,9 @@ function fmtDate(iso: string) {
    STAGE PROGRESS BAR
 ───────────────────────────────────────────── */
 function StageProgressBar({ stage }: { stage: string }) {
-  const isRejected = stage === 'REJECTED';
-  const current = PROGRESS_STAGES.indexOf(isRejected ? 'ELIGIBLE' : stage);
+  const normalizedStage = normalizeStage(stage);
+  const isRejected = normalizedStage === 'REJECTED';
+  const current = PROGRESS_STAGES.indexOf(isRejected ? 'ELIGIBLE' : normalizedStage);
 
   if (isRejected) {
     return (
@@ -170,7 +178,7 @@ export default function StudentApplications() {
   useEffect(() => { loadApps(); }, [loadApps]);
 
   const filtered = apps.filter(a => {
-    if (stageF !== 'ALL' && a.stage !== stageF) return false;
+    if (stageF !== 'ALL' && normalizeStage(a.stage) !== stageF) return false;
     if (search) {
       const q = search.toLowerCase();
       if (!a.companyName.toLowerCase().includes(q) &&
@@ -181,7 +189,7 @@ export default function StudentApplications() {
   });
 
   const counts = ALL_STAGES.reduce((acc, s) => {
-    acc[s] = apps.filter(a => a.stage === s).length;
+    acc[s] = apps.filter(a => normalizeStage(a.stage) === s).length;
     return acc;
   }, {} as Record<string, number>);
 
@@ -352,8 +360,9 @@ export default function StudentApplications() {
               </thead>
               <tbody>
                 {filtered.map((app, idx) => {
-                  const cfg = STAGE_CFG[app.stage] ?? STAGE_CFG['APPLIED'];
-                  const isSelected = app.stage === 'SELECTED';
+                  const stage = normalizeStage(app.stage);
+                  const cfg = STAGE_CFG[stage];
+                  const isSelected = stage === 'SELECTED';
                   const isExpanded = expanded === app.id;
                   return (
                     <>
@@ -411,7 +420,7 @@ export default function StudentApplications() {
 
                         {/* Stage Progress */}
                         <td style={{ padding: '14px 16px' }}>
-                          <StageProgressBar stage={app.stage} />
+                          <StageProgressBar stage={stage} />
                         </td>
 
                         {/* Status Badge */}
@@ -486,8 +495,9 @@ export default function StudentApplications() {
           /* ══════════════ CARD VIEW ══════════════ */
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(320px,1fr))', gap: 14 }}>
             {filtered.map(app => {
-              const cfg = STAGE_CFG[app.stage] ?? STAGE_CFG['APPLIED'];
-              const isSelected = app.stage === 'SELECTED';
+              const stage = normalizeStage(app.stage);
+              const cfg = STAGE_CFG[stage];
+              const isSelected = stage === 'SELECTED';
               return (
                 <div
                   key={app.id}
@@ -539,7 +549,7 @@ export default function StudentApplications() {
                   </div>
 
                   {/* Progress */}
-                  <StageProgressBar stage={app.stage} />
+                  <StageProgressBar stage={stage} />
 
                   {/* Selected badge */}
                   {isSelected && (

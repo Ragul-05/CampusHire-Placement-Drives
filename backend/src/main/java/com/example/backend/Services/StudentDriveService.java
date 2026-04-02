@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -25,17 +26,26 @@ public class StudentDriveService {
     @Autowired private StudentProfileRepository studentProfileRepository;
     @Autowired private DriveApplicationRepository driveApplicationRepository;
     @Autowired private PlacementEligibilityService placementEligibilityService;
+    @Autowired private DriveEligibilitySyncService driveEligibilitySyncService;
 
     @Transactional(readOnly = true)
     public List<PlacementDriveDto> getVisibleDrives(String email) {
         StudentProfile profile = studentProfileRepository.findByUserEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Profile not found"));
 
-        List<PlacementDrive> drives = placementDriveRepository
-                .findByStatusIn(List.of(DriveStatus.ONGOING, DriveStatus.UPCOMING));
+        driveEligibilitySyncService.syncEligibleMappingsForStudent(profile);
 
-        Map<Long, DriveApplication> appliedMap = driveApplicationRepository
-                .findByStudentProfileId(profile.getId())
+        List<PlacementDrive> drives = placementDriveRepository.findAll()
+                .stream()
+                .sorted(Comparator
+                        .comparing((PlacementDrive drive) -> drive.getStatus() == DriveStatus.ONGOING ? 0
+                                : drive.getStatus() == DriveStatus.UPCOMING ? 1 : 2)
+                        .thenComparing(PlacementDrive::getApplicationDeadline,
+                                Comparator.nullsLast(Comparator.naturalOrder())))
+                .collect(Collectors.toList());
+
+        Map<Long, DriveApplication> appliedMap = driveEligibilitySyncService
+                .getStudentMappings(profile.getId())
                 .stream()
                 .collect(Collectors.toMap(a -> a.getDrive().getId(), a -> a, (a, b) -> a));
 

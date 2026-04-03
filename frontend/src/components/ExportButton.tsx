@@ -25,11 +25,15 @@ export default function ExportButton({ opts, disabled = false, label = 'Export' 
   const [loading, setLoading]   = useState<'pdf' | 'xlsx' | null>(null);
   const [menuStyle, setMenuStyle] = useState<{ top: number; left: number; minWidth: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   /* Close on outside click */
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      const clickedTrigger = ref.current?.contains(target);
+      const clickedMenu = menuRef.current?.contains(target);
+      if (!clickedTrigger && !clickedMenu) setOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -97,6 +101,7 @@ export default function ExportButton({ opts, disabled = false, label = 'Export' 
 
       {open && menuStyle && createPortal(
         <div
+          ref={menuRef}
           className="export-dropdown export-dropdown-portal"
           style={{ top: menuStyle.top, left: menuStyle.left, minWidth: menuStyle.minWidth }}
         >

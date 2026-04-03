@@ -6780,11 +6780,21 @@ button:focus-visible,
   cursor: not-allowed;
 }
 
+.export-button-wrap {
+  position: relative;
+  display: inline-block;
+  z-index: 20;
+}
+
+.export-button-wrap.open {
+  z-index: 1200;
+}
+
 .export-dropdown {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  z-index: 300;
+  z-index: 1300;
   background: #fff;
   border: 1.5px solid #e2e8f0;
   border-radius: 16px;
@@ -6792,6 +6802,14 @@ button:focus-visible,
   min-width: 240px;
   padding: 8px;
   animation: fadeSlideDown 0.15s ease;
+}
+
+.export-dropdown-portal {
+  position: fixed;
+  top: 0;
+  right: auto;
+  left: 0;
+  z-index: 9999;
 }
 
 @keyframes fadeSlideDown {

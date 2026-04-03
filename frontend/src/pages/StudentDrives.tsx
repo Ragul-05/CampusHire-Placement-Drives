@@ -44,6 +44,16 @@ const STAGE_COLOR: Record<string, { bg: string; text: string }> = {
   SELECTED:   { bg: '#dcfce7', text: '#15803d' },
 };
 
+function hasDeadlinePassed(deadline: string | null) {
+  return !!deadline && new Date(deadline).getTime() < Date.now();
+}
+
+function getDriveStatusPalette(status: DriveDto['status']) {
+  if (status === 'ONGOING') return { bg: '#d1fae5', text: '#065f46' };
+  if (status === 'COMPLETED') return { bg: '#e2e8f0', text: '#475569' };
+  return { bg: '#fef3c7', text: '#92400e' };
+}
+
 /* ─────────────────────────────────────────────
    TOAST
 ───────────────────────────────────────────── */
@@ -67,8 +77,6 @@ function Toast({ msg, type, onClose }: { msg: string; type: 'success' | 'error';
    MAIN PAGE
 ───────────────────────────────────────────── */
 export default function StudentDrives() {
-  const email = localStorage.getItem('email') || '';
-
   const [drives,    setDrives]    = useState<DriveDto[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [applying,  setApplying]  = useState<number | null>(null);
@@ -80,7 +88,7 @@ export default function StudentDrives() {
 
   // Filters
   const [search,    setSearch]    = useState('');
-  const [statusF,   setStatusF]   = useState<'ALL' | 'ONGOING' | 'UPCOMING'>('ALL');
+  const [statusF,   setStatusF]   = useState<'ALL' | 'ONGOING' | 'UPCOMING' | 'COMPLETED'>('ALL');
   const [minCtc,    setMinCtc]    = useState('');
   const [maxCtc,    setMaxCtc]    = useState('');
   const [eligOnly,  setEligOnly]  = useState(false);
@@ -89,7 +97,7 @@ export default function StudentDrives() {
     try {
       setLoading(true);
       const [drivesRes, profileRes] = await Promise.all([
-        getJson<DriveDto[]>(`/api/student/drives?email=${encodeURIComponent(email)}`),
+        getJson<DriveDto[]>('/api/student/drives'),
         getJson<{ isLocked: boolean; verificationStatus: string }>(
           '/api/student/profile'
         ).catch(() => ({ data: { isLocked: false, verificationStatus: 'PENDING' } })),
@@ -102,7 +110,7 @@ export default function StudentDrives() {
     } finally {
       setLoading(false);
     }
-  }, [email]);
+  }, []);
 
   useEffect(() => { loadDrives(); }, [loadDrives]);
 
@@ -127,11 +135,16 @@ export default function StudentDrives() {
       setConfirmDrive(null);
       return;
     }
+    if (confirmDrive.status === 'COMPLETED' || hasDeadlinePassed(confirmDrive.applicationDeadline)) {
+      setToast({ msg: 'This drive is closed for applications.', type: 'error' });
+      setConfirmDrive(null);
+      return;
+    }
     const driveId = confirmDrive.id;
     setConfirmDrive(null);
     setApplying(driveId);
     try {
-      await postJson(`/api/student/applications/${driveId}/apply?email=${encodeURIComponent(email)}`, {});
+      await postJson(`/api/student/applications/${driveId}/apply`, {});
       setToast({ msg: '🎉 Application submitted successfully!', type: 'success' });
       await loadDrives();
       if (selected?.id === driveId) {
@@ -156,7 +169,7 @@ export default function StudentDrives() {
   /* ── Stats ── */
   const total    = drives.length;
   const eligible = drives.filter(d => d.isEligible).length;
-  const applied  = drives.filter(d => d.hasApplied).length;
+  const applied  = drives.filter(d => d.applicationStage).length;
   const ongoing  = drives.filter(d => d.status === 'ONGOING').length;
 
   return (
@@ -195,7 +208,7 @@ export default function StudentDrives() {
             🏢 Browse Placement Drives
           </h1>
           <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 14 }}>
-            Discover and apply for placement opportunities
+            Review your automatically matched placement opportunities
           </p>
         </div>
 
@@ -243,6 +256,7 @@ export default function StudentDrives() {
             <option value="ALL">All Status</option>
             <option value="ONGOING">Ongoing</option>
             <option value="UPCOMING">Upcoming</option>
+            <option value="COMPLETED">Completed</option>
           </select>
 
           {/* CTC range */}
@@ -303,8 +317,6 @@ export default function StudentDrives() {
               <DriveCard
                 key={drive.id}
                 drive={drive}
-                applying={applying === drive.id}
-                onApply={() => handleApply(drive)}
                 onView={() => setSelected(drive)}
                 profileLocked={profileLocked}
               />
@@ -317,10 +329,7 @@ export default function StudentDrives() {
       {selected && (
         <DriveDetailModal
           drive={selected}
-          applying={applying === selected.id}
-          onApply={() => handleApply(selected)}
           onClose={() => setSelected(null)}
-          email={email}
         />
       )}
 
@@ -341,16 +350,16 @@ export default function StudentDrives() {
 /* ─────────────────────────────────────────────
    DRIVE CARD
 ───────────────────────────────────────────── */
-function DriveCard({ drive, applying, onApply, onView, profileLocked }: {
+function DriveCard({ drive, onView, profileLocked }: {
   drive: DriveDto;
-  applying: boolean;
-  onApply: () => void;
   onView: () => void;
   profileLocked: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
-  const statusColor = drive.status === 'ONGOING' ? { bg: '#d1fae5', text: '#065f46' } : { bg: '#fef3c7', text: '#92400e' };
+  const statusColor = getDriveStatusPalette(drive.status);
   const stageCfg = drive.applicationStage ? STAGE_COLOR[drive.applicationStage] : null;
+  const isCompleted = drive.status === 'COMPLETED';
+  const deadlinePassed = hasDeadlinePassed(drive.applicationDeadline);
 
   return (
     <div
@@ -386,7 +395,7 @@ function DriveCard({ drive, applying, onApply, onView, profileLocked }: {
             background: statusColor.bg, color: statusColor.text }}>
             {drive.status}
           </span>
-          {drive.hasApplied && stageCfg && (
+          {drive.applicationStage && stageCfg && (
             <span style={{ padding: '3px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700,
               background: stageCfg.bg, color: stageCfg.text }}>
               ✓ {drive.applicationStage}
@@ -480,12 +489,34 @@ function DriveCard({ drive, applying, onApply, onView, profileLocked }: {
           👁️ View Details
         </button>
 
-        {drive.hasApplied ? (
+        {drive.applicationStage ? (
           <button disabled style={{
             flex: 1, padding: '9px 0', borderRadius: 10, border: 'none',
             background: '#d1fae5', fontSize: 13, fontWeight: 700, color: '#065f46', cursor: 'default'
           }}>
             ✓ Applied
+          </button>
+        ) : isCompleted ? (
+          <button
+            disabled
+            style={{
+              flex: 1, padding: '9px 0', borderRadius: 10, border: '1.5px solid #cbd5e1',
+              background: '#f8fafc', fontSize: 12, fontWeight: 700, color: '#64748b',
+              cursor: 'not-allowed',
+            }}
+          >
+            Drive Completed
+          </button>
+        ) : deadlinePassed ? (
+          <button
+            disabled
+            style={{
+              flex: 1, padding: '9px 0', borderRadius: 10, border: '1.5px solid #cbd5e1',
+              background: '#f8fafc', fontSize: 12, fontWeight: 700, color: '#64748b',
+              cursor: 'not-allowed',
+            }}
+          >
+            Deadline Closed
           </button>
         ) : profileLocked ? (
           <button
@@ -501,18 +532,17 @@ function DriveCard({ drive, applying, onApply, onView, profileLocked }: {
           </button>
         ) : (
           <button
-            onClick={e => { e.stopPropagation(); if (drive.isEligible) onApply(); }}
-            disabled={!drive.isEligible || applying}
+            disabled
             style={{
               flex: 1, padding: '9px 0', borderRadius: 10, border: 'none',
-              background: drive.isEligible ? 'linear-gradient(135deg,#2563eb,#1d4ed8)' : '#e2e8f0',
+              background: '#dcfce7',
               fontSize: 13, fontWeight: 700,
-              color: drive.isEligible ? '#fff' : '#94a3b8',
-              cursor: drive.isEligible ? 'pointer' : 'not-allowed',
+              color: '#15803d',
+              cursor: 'default',
               transition: 'opacity .15s'
             }}
           >
-            {applying ? '⏳' : '🚀 Apply Now'}
+            You are Eligible
           </button>
         )}
       </div>
@@ -579,7 +609,7 @@ function AnimatedBar({ pct, animate }: { pct: number; animate: boolean }) {
   );
 }
 
-function SkillMatchPanel({ drive, email }: { drive: DriveDto; email: string }) {
+function SkillMatchPanel({ drive }: { drive: DriveDto }) {
   const [studentSkills, setStudentSkills] = useState<string[]>(drive.studentSkills || []);
   const [loaded, setLoaded] = useState(!!(drive.studentSkills?.length));
   const [animate, setAnimate] = useState(false);
@@ -589,18 +619,17 @@ function SkillMatchPanel({ drive, email }: { drive: DriveDto; email: string }) {
     if (ref.current) return;
     ref.current = true;
     // Fetch student skills if not already on the drive DTO
-    if (!drive.studentSkills?.length && email) {
-      getJson<{ skills: Array<{ skillName: string }> }>(
-        `/api/student/profile/skills?email=${encodeURIComponent(email)}`
-      ).then(r => {
-        const skills = (r.data?.skills || []).map((s: any) => s.skillName || s);
-        setStudentSkills(skills);
-        setLoaded(true);
-      }).catch(() => setLoaded(true));
+    if (!drive.studentSkills?.length) {
+      getJson<{ skills: Array<{ skillName: string }> }>('/api/student/profile/skills')
+        .then(r => {
+          const skills = (r.data?.skills || []).map((s: any) => s.skillName || s);
+          setStudentSkills(skills);
+          setLoaded(true);
+        }).catch(() => setLoaded(true));
     } else {
       setLoaded(true);
     }
-  }, [drive.studentSkills, email]);
+  }, [drive.studentSkills]);
 
   useEffect(() => {
     if (loaded) {
@@ -678,15 +707,14 @@ function SkillMatchPanel({ drive, email }: { drive: DriveDto; email: string }) {
 /* ─────────────────────────────────────────────
    INFO CHIP
 ───────────────────────────────────────────── */
-function DriveDetailModal({ drive, applying, onApply, onClose, email }: {
+function DriveDetailModal({ drive, onClose }: {
   drive: DriveDto;
-  applying: boolean;
-  onApply: () => void;
   onClose: () => void;
-  email: string;
 }) {
-  const statusColor = drive.status === 'ONGOING' ? { bg: '#d1fae5', text: '#065f46' } : { bg: '#fef3c7', text: '#92400e' };
+  const statusColor = getDriveStatusPalette(drive.status);
   const stageCfg = drive.applicationStage ? STAGE_COLOR[drive.applicationStage] : null;
+  const isCompleted = drive.status === 'COMPLETED';
+  const deadlinePassed = hasDeadlinePassed(drive.applicationDeadline);
 
   return (
     <div style={{
@@ -734,7 +762,7 @@ function DriveDetailModal({ drive, applying, onApply, onClose, email }: {
           <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
             <span style={{ padding: '4px 12px', borderRadius: 99, fontSize: 12, fontWeight: 700,
               background: statusColor.bg, color: statusColor.text }}>{drive.status}</span>
-            {drive.hasApplied && stageCfg && (
+            {drive.applicationStage && stageCfg && (
               <span style={{ padding: '4px 12px', borderRadius: 99, fontSize: 12, fontWeight: 700,
                 background: stageCfg.bg, color: stageCfg.text }}>✓ {drive.applicationStage}</span>
             )}
@@ -806,7 +834,7 @@ function DriveDetailModal({ drive, applying, onApply, onClose, email }: {
 
           {/* ── Skill Match Visualization (Module 9) ── */}
           <Section title="">
-            <SkillMatchPanel drive={drive} email={email} />
+            <SkillMatchPanel drive={drive} />
           </Section>
 
           {/* Allowed Departments */}
@@ -823,12 +851,12 @@ function DriveDetailModal({ drive, applying, onApply, onClose, email }: {
 
           {/* Apply button */}
           <div style={{ borderTop: '1.5px solid #e2e8f0', paddingTop: 18 }}>
-            {drive.hasApplied ? (
+            {drive.applicationStage ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 20px',
                 background: '#d1fae5', borderRadius: 12, border: '1.5px solid #6ee7b7' }}>
                 <span style={{ fontSize: 20 }}>✅</span>
                 <div>
-                  <div style={{ fontWeight: 800, color: '#065f46', fontSize: 15 }}>Application Submitted!</div>
+                    <div style={{ fontWeight: 800, color: '#065f46', fontSize: 15 }}>Automatically Mapped to Drive</div>
                   {drive.applicationStage && (
                     <div style={{ fontSize: 12, color: '#059669', marginTop: 2 }}>
                       Current stage: <strong>{drive.applicationStage}</strong>
@@ -836,18 +864,27 @@ function DriveDetailModal({ drive, applying, onApply, onClose, email }: {
                   )}
                 </div>
               </div>
+            ) : isCompleted ? (
+              <div style={{ padding: '14px 20px', background: '#f8fafc', borderRadius: 12,
+                border: '1.5px solid #cbd5e1', textAlign: 'center', fontWeight: 700, color: '#64748b', fontSize: 14 }}>
+                Drive Completed
+              </div>
+            ) : deadlinePassed ? (
+              <div style={{ padding: '14px 20px', background: '#f8fafc', borderRadius: 12,
+                border: '1.5px solid #cbd5e1', textAlign: 'center', fontWeight: 700, color: '#64748b', fontSize: 14 }}>
+                Application deadline closed
+              </div>
             ) : drive.isEligible ? (
               <button
-                onClick={onApply}
-                disabled={applying}
+                disabled
                 style={{
                   width: '100%', padding: '14px', borderRadius: 12, border: 'none',
-                  background: applying ? '#93c5fd' : 'linear-gradient(135deg,#2563eb,#1d4ed8)',
-                  color: '#fff', fontSize: 15, fontWeight: 800, cursor: applying ? 'wait' : 'pointer',
+                  background: '#dcfce7',
+                  color: '#15803d', fontSize: 15, fontWeight: 800, cursor: 'default',
                   transition: 'opacity .15s'
                 }}
               >
-                {applying ? '⏳ Submitting Application…' : '🚀 Apply for This Drive'}
+                You are Eligible
               </button>
             ) : (
               <div style={{ padding: '14px 20px', background: '#fef2f2', borderRadius: 12,

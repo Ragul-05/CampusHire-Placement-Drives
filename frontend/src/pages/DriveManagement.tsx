@@ -15,6 +15,8 @@ type Drive = {
   description?: string;
   status: 'UPCOMING' | 'ONGOING' | 'COMPLETED';
   createdAt: string;
+  applicationDeadline?: string | null;
+  totalOpenings?: number | null;
 };
 
 type Company = {
@@ -29,6 +31,8 @@ type FormData = {
   ctcLpa: number | string;
   description: string;
   status: 'UPCOMING' | 'ONGOING' | 'COMPLETED';
+  applicationDeadline: string;
+  totalOpenings: number | string;
 };
 
 export default function DriveManagement({ onNavigate }: { onNavigate?: (view: any) => void }) {
@@ -48,7 +52,9 @@ export default function DriveManagement({ onNavigate }: { onNavigate?: (view: an
     role: '',
     ctcLpa: '',
     description: '',
-    status: 'UPCOMING'
+    status: 'UPCOMING',
+    applicationDeadline: '',
+    totalOpenings: ''
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -118,12 +124,14 @@ export default function DriveManagement({ onNavigate }: { onNavigate?: (view: an
         role: drive.role,
         ctcLpa: drive.ctcLpa,
         description: drive.description || '',
-        status: drive.status
+        status: drive.status,
+        applicationDeadline: drive.applicationDeadline ? drive.applicationDeadline.slice(0, 16) : '',
+        totalOpenings: drive.totalOpenings ?? ''
       });
       setViewMode(viewOnly);
     } else {
       setEditingId(null);
-      setFormData({ companyId: 0, title: '', role: '', ctcLpa: '', description: '', status: 'UPCOMING' });
+      setFormData({ companyId: 0, title: '', role: '', ctcLpa: '', description: '', status: 'UPCOMING', applicationDeadline: '', totalOpenings: '' });
       setViewMode(false);
     }
     setShowModal(true);
@@ -133,7 +141,7 @@ export default function DriveManagement({ onNavigate }: { onNavigate?: (view: an
     setShowModal(false);
     setEditingId(null);
     setViewMode(false);
-    setFormData({ companyId: 0, title: '', role: '', ctcLpa: '', description: '', status: 'UPCOMING' });
+    setFormData({ companyId: 0, title: '', role: '', ctcLpa: '', description: '', status: 'UPCOMING', applicationDeadline: '', totalOpenings: '' });
   }
 
   async function handleSave() {
@@ -143,7 +151,12 @@ export default function DriveManagement({ onNavigate }: { onNavigate?: (view: an
     }
     try {
       setSubmitting(true);
-      const payload = { ...formData, ctcLpa: parseFloat(formData.ctcLpa.toString()) };
+      const payload = {
+        ...formData,
+        ctcLpa: parseFloat(formData.ctcLpa.toString()),
+        totalOpenings: formData.totalOpenings ? parseInt(formData.totalOpenings.toString(), 10) : null,
+        applicationDeadline: formData.applicationDeadline || null
+      };
       if (editingId) {
         await putJson(`/api/admin/drives/${editingId}`, payload);
         showToast('Drive updated successfully');
@@ -391,6 +404,26 @@ export default function DriveManagement({ onNavigate }: { onNavigate?: (view: an
                       <option value="ONGOING">Ongoing</option>
                       <option value="COMPLETED">Completed</option>
                     </select>
+                  </label>
+                  <label>
+                    Application Deadline
+                    <input
+                      type="datetime-local"
+                      value={formData.applicationDeadline}
+                      onChange={(e) => setFormData({ ...formData, applicationDeadline: e.target.value })}
+                      disabled={viewMode}
+                    />
+                  </label>
+                  <label>
+                    Total Openings
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="e.g. 25"
+                      value={formData.totalOpenings}
+                      onChange={(e) => setFormData({ ...formData, totalOpenings: e.target.value })}
+                      disabled={viewMode}
+                    />
                   </label>
                   <label className="form-col-2">
                     Description

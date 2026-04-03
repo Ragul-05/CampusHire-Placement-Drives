@@ -36,6 +36,8 @@ type Participant = {
   offerCtc?: number | null;
 };
 
+const FACULTY_STAGE_OPTIONS = ['ELIGIBLE', 'ASSESSMENT', 'TECHNICAL', 'HR'] as const;
+
 type StatusKey = 'ALL' | 'UPCOMING' | 'ONGOING' | 'COMPLETED';
 
 const STATUS_META: Record<Drive['status'], { cls: string; icon: JSX.Element; color: string }> = {
@@ -103,6 +105,7 @@ function DriveStudentsModal({
   const [students, setStudents] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [updatingStudentId, setUpdatingStudentId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
@@ -141,6 +144,25 @@ function DriveStudentsModal({
       setError(e.message || 'Failed to submit drive to Placement HQ');
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleStageChange(studentId: number, stage: string) {
+    try {
+      setUpdatingStudentId(studentId);
+      await postJson(facultyUrl(`/api/faculty/drives/${studentId}/stage`), {
+        driveId: drive.id,
+        stage,
+      });
+      setStudents((current) =>
+        current.map((student) =>
+          student.studentId === studentId ? { ...student, stage: stage as Participant['stage'] } : student
+        )
+      );
+    } catch (e: any) {
+      setError(e.message || 'Failed to update student stage');
+    } finally {
+      setUpdatingStudentId(null);
     }
   }
 
@@ -207,6 +229,7 @@ function DriveStudentsModal({
                     <th>Eligibility</th>
                     <th>Faculty Approval</th>
                     <th>Offer</th>
+                    <th>Advance</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -256,6 +279,22 @@ function DriveStudentsModal({
                       </td>
                       <td style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>
                         {student.offerRole && student.offerCtc != null ? `${student.offerRole} · ₹${student.offerCtc} LPA` : '—'}
+                      </td>
+                      <td>
+                        {student.stage === 'SELECTED' ? (
+                          <span className="badge success">Selected</span>
+                        ) : (
+                          <select
+                            className="stage-select"
+                            value={student.stage}
+                            disabled={!student.facultyApproved || updatingStudentId === student.studentId}
+                            onChange={(e) => handleStageChange(student.studentId, e.target.value)}
+                          >
+                            {FACULTY_STAGE_OPTIONS.map((option) => (
+                              <option key={option} value={option}>{option}</option>
+                            ))}
+                          </select>
+                        )}
                       </td>
                     </tr>
                   ))}

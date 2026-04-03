@@ -53,6 +53,7 @@ type Student = {
 type FilterResult = {
   drive: Drive;
   totalVerified: number;
+  totalStudents?: number;
   eligibleStudents: Student[];
   ineligibleReasons: Record<number, string[]>;
 };
@@ -211,9 +212,10 @@ export default function DriveFiltering({ onNavigate }: { onNavigate?: (view: any
   const [sortKey, setSortKey]             = useState<SortKey>('cgpa');
   const [sortDir, setSortDir]             = useState<SortDir>('desc');
   const [searchStudent, setSearchStudent] = useState('');
-  const [showOnlyEligible, setShowOnlyEligible] = useState(true);
+  const [showOnlyEligible, setShowOnlyEligible] = useState(false);
   const [refreshKey, setRefreshKey]       = useState(0);
   const [sendingToAdmin, setSendingToAdmin] = useState(false);
+  const [bulkApproving, setBulkApproving] = useState(false);
 
   const selectedDrive = drives.find(d => d.id === selectedDriveId) ?? null;
 
@@ -263,9 +265,11 @@ export default function DriveFiltering({ onNavigate }: { onNavigate?: (view: any
         // Ensure eligibleStudents have safe defaults
         raw.eligibleStudents = (raw.eligibleStudents ?? []).map(s => ({
           ...s,
+          rollNo:           s.rollNo || '—',
           cgpa:             s.cgpa             ?? 0,
           standingArrears:  s.standingArrears  ?? 0,
           historyOfArrears: s.historyOfArrears ?? 0,
+          department:       s.department       ?? '—',
           skills:           s.skills           ?? [],
           facultyApproved:  s.facultyApproved  ?? false,
         }));
@@ -325,7 +329,7 @@ export default function DriveFiltering({ onNavigate }: { onNavigate?: (view: any
       list = list.filter(s =>
         s.name.toLowerCase().includes(q) ||
         (s.department ?? s.batch ?? '').toLowerCase().includes(q) ||
-        s.rollNo.toLowerCase().includes(q)
+        (s.rollNo ?? '').toLowerCase().includes(q)
       );
     }
 
@@ -340,9 +344,14 @@ export default function DriveFiltering({ onNavigate }: { onNavigate?: (view: any
     return list;
   }, [filterResult, selectedDrive, showOnlyEligible, searchStudent, sortKey, sortDir]);
 
-  const eligibleCount   = filterResult ? filterResult.eligibleStudents.filter(s => selectedDrive && isEligible(s, selectedDrive.eligibilityCriteria)).length : 0;
-  const eligibilityRate = filterResult?.totalVerified ? Math.round((eligibleCount / filterResult.totalVerified) * 100) : 0;
+  const totalStudents = filterResult?.totalStudents ?? filterResult?.eligibleStudents.length ?? 0;
+  const eligibleCount = filterResult && selectedDrive
+    ? filterResult.eligibleStudents.filter(student => isEligible(student, selectedDrive.eligibilityCriteria)).length
+    : 0;
+  const eligibilityRate = totalStudents ? Math.round((eligibleCount / totalStudents) * 100) : 0;
   const approvedStudentIds = displayStudents.filter(student => student.facultyApproved).map(student => student.id);
+  const visibleEligibleStudentIds = displayStudents.filter(student => student.eligible).map(student => student.id);
+  const visibleApprovedStudentIds = displayStudents.filter(student => student.eligible && student.facultyApproved).map(student => student.id);
 
   const sendApprovedStudentsToAdmin = async () => {
     if (!selectedDrive || approvedStudentIds.length === 0) {
@@ -364,6 +373,31 @@ export default function DriveFiltering({ onNavigate }: { onNavigate?: (view: any
     }
   };
 
+  const toggleBulkApproval = async (studentIds: number[], approved: boolean) => {
+    if (!selectedDrive || studentIds.length === 0) {
+      setToast({ msg: 'No visible eligible students are available for bulk approval.', type: 'error' });
+      return;
+    }
+    try {
+      setBulkApproving(true);
+      await postJson(
+        facultyUrl('/api/faculty/drives/approve-all'),
+        { driveId: selectedDrive.id, studentIds, approved }
+      );
+      setToast({
+        msg: approved
+          ? 'All visible eligible students approved successfully!'
+          : 'Visible student approvals cleared successfully!',
+        type: 'success'
+      });
+      runFilter(selectedDrive.id);
+    } catch (e: any) {
+      setToast({ msg: e.message || 'Failed to update bulk approval', type: 'error' });
+    } finally {
+      setBulkApproving(false);
+    }
+  };
+
   /* ── Sort toggle ── */
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(d => d === 'desc' ? 'asc' : 'desc');
@@ -377,7 +411,7 @@ export default function DriveFiltering({ onNavigate }: { onNavigate?: (view: any
 
   /* ── Stage badge colour ── */
   const stageCls: Record<string, string> = {
-    APPLIED: 'info', ASSESSMENT: 'warning', TECHNICAL: 'warning', HR: 'warning', SELECTED: 'success'
+    ELIGIBLE: 'success', APPLIED: 'info', ASSESSMENT: 'warning', TECHNICAL: 'warning', HR: 'warning', SELECTED: 'success'
   };
 
   /* ════ RENDER ════ */
@@ -427,6 +461,24 @@ export default function DriveFiltering({ onNavigate }: { onNavigate?: (view: any
               }}
             />
             <button
+              className="btn-secondary"
+              onClick={() => toggleBulkApproval(visibleEligibleStudentIds, true)}
+              disabled={!selectedDrive || visibleEligibleStudentIds.length === 0 || bulkApproving}
+              title={visibleEligibleStudentIds.length === 0 ? 'No visible eligible students to approve' : 'Approve all visible eligible students'}
+            >
+              <CheckCircle size={15} />
+              {bulkApproving ? 'Updating…' : `Approve All${visibleEligibleStudentIds.length ? ` (${visibleEligibleStudentIds.length})` : ''}`}
+            </button>
+            <button
+              className="btn-secondary"
+              onClick={() => toggleBulkApproval(visibleApprovedStudentIds, false)}
+              disabled={!selectedDrive || visibleApprovedStudentIds.length === 0 || bulkApproving}
+              title={visibleApprovedStudentIds.length === 0 ? 'No visible approved students to clear' : 'Clear approval for all visible approved students'}
+            >
+              <XCircle size={15} />
+              Clear Approvals{visibleApprovedStudentIds.length ? ` (${visibleApprovedStudentIds.length})` : ''}
+            </button>
+            <button
               className="btn-primary"
               onClick={sendApprovedStudentsToAdmin}
               disabled={!selectedDrive || approvedStudentIds.length === 0 || sendingToAdmin}
@@ -462,7 +514,7 @@ export default function DriveFiltering({ onNavigate }: { onNavigate?: (view: any
                   onChange={e => {
                     setSelectedDriveId(e.target.value ? Number(e.target.value) : '');
                     setSearchStudent('');
-                    setShowOnlyEligible(true);
+                    setShowOnlyEligible(false);
                   }}
                 >
                   <option value="">— Choose a drive —</option>
@@ -512,8 +564,8 @@ export default function DriveFiltering({ onNavigate }: { onNavigate?: (view: any
               <div className="df-kpi-card purple">
                 <div className="df-kpi-icon"><Users size={20} /></div>
                 <div className="df-kpi-body">
-                  <span className="df-kpi-label">Total Verified</span>
-                  <span className="df-kpi-value">{filterResult.totalVerified}</span>
+                  <span className="df-kpi-label">Total Students</span>
+                  <span className="df-kpi-value">{totalStudents}</span>
                 </div>
               </div>
               <div className="df-kpi-card green">
@@ -631,15 +683,17 @@ export default function DriveFiltering({ onNavigate }: { onNavigate?: (view: any
                         >
                           <td className="df-row-num">{idx + 1}</td>
                           <td>
-                            <div className="faculty-user-cell">
+                            <div className="faculty-user-cell" style={{ minWidth: 220 }}>
                               <div className={`faculty-avatar ${s.eligible ? 'verified' : ''}`}>
                                 {(s.name || '?').charAt(0).toUpperCase()}
                               </div>
-                              <div>
-                                <div style={{ fontWeight: 600, fontSize: 13 }}>
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontWeight: 600, fontSize: 13, lineHeight: 1.35 }}>
                                   {s.name}
                                 </div>
-                                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{s.rollNo}</div>
+                                <div style={{ fontSize: 11, color: 'var(--text-muted)', minHeight: 16 }}>
+                                  {s.rollNo || '—'}
+                                </div>
                               </div>
                             </div>
                           </td>

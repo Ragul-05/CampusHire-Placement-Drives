@@ -107,13 +107,14 @@ function StatusBadge({ status }: { status: 'PENDING' | 'VERIFIED' | 'REJECTED' }
 }
 
 /* ─── Pie label ─── */
-const renderPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+const renderPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, payload }: any) => {
   if (percent < 0.05) return null;
   const R = Math.PI / 180;
   const r = innerRadius + (outerRadius - innerRadius) * 0.55;
   const x = cx + r * Math.cos(-midAngle * R);
   const y = cy + r * Math.sin(-midAngle * R);
-  return <text x={x} y={y} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={700}>{`${(percent * 100).toFixed(0)}%`}</text>;
+  const label = payload?.percentage != null ? `${payload.percentage}%` : `${(percent * 100).toFixed(1)}%`;
+  return <text x={x} y={y} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={700}>{label}</text>;
 };
 
 const PIE_COLORS = ['#f59e0b', '#10b981', '#ef4444'];
@@ -156,16 +157,34 @@ export default function FacultyDashboard({ onNavigate }: { onNavigate?: (view: a
   }, [refreshKey]);
 
   const kpis: KpiProps[] = stats ? [
-    { label: 'Total Dept. Students',  value: stats.totalDepartmentStudents, icon: <GraduationCap size={22} />, growth: 5.2,   gradient: 'linear-gradient(135deg,#667eea,#764ba2)', delay: 0    },
+    { label: 'Total Students',        value: stats.totalDepartmentStudents, icon: <GraduationCap size={22} />, growth: 5.2,   gradient: 'linear-gradient(135deg,#667eea,#764ba2)', delay: 0    },
     { label: 'Pending Verifications', value: stats.pendingVerifications,    icon: <Clock size={22} />,         growth: -12.3, gradient: 'linear-gradient(135deg,#f59e0b,#d97706)', delay: 0.07 },
     { label: 'Verified Students',     value: stats.verifiedStudents,        icon: <CheckCircle2 size={22} />, growth: 18.5,  gradient: 'linear-gradient(135deg,#10b981,#059669)', delay: 0.14 },
     { label: 'Eligible for Drives',   value: stats.eligibleForDrives,       icon: <UserCheck size={22} />,     growth: 22.1,  gradient: 'linear-gradient(135deg,#06b6d4,#0891b2)', delay: 0.21 },
   ] : [];
 
   const pieData = stats ? [
-    { name: 'Pending',  value: stats.statusDistribution.pending  },
-    { name: 'Verified', value: stats.statusDistribution.verified },
-    { name: 'Rejected', value: stats.statusDistribution.rejected },
+    {
+      name: 'Pending',
+      value: stats.statusDistribution.pending,
+      percentage: stats.totalDepartmentStudents
+        ? Number(((stats.statusDistribution.pending / stats.totalDepartmentStudents) * 100).toFixed(1))
+        : 0,
+    },
+    {
+      name: 'Verified',
+      value: stats.statusDistribution.verified,
+      percentage: stats.totalDepartmentStudents
+        ? Number(((stats.statusDistribution.verified / stats.totalDepartmentStudents) * 100).toFixed(1))
+        : 0,
+    },
+    {
+      name: 'Rejected',
+      value: stats.statusDistribution.rejected,
+      percentage: stats.totalDepartmentStudents
+        ? Number(((stats.statusDistribution.rejected / stats.totalDepartmentStudents) * 100).toFixed(1))
+        : 0,
+    },
   ] : [];
 
   return (

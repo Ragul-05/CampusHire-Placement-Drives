@@ -93,7 +93,7 @@ export async function apiJson<T>(
     body: body ? JSON.stringify(body) : undefined
   });
 
-  if ((res.status === 401 || res.status === 403) && auth) {
+  if (res.status === 401 && auth) {
     if (!_retry) {
       const refreshedToken = await refreshAccessToken();
       if (refreshedToken) {

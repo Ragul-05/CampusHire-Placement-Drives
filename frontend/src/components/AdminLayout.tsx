@@ -7,7 +7,7 @@ import { ROUTES } from '../utils/routes';
 
 type Props = {
   children: ReactNode;
-  activeNav?: 'overview' | 'drives' | 'companies' | 'students' | 'eligibility' | 'shortlisting' | 'offers' | 'analytics' | 'alerts' | 'reports';
+  activeNav?: 'overview' | 'drives' | 'companies' | 'students' | 'eligibility' | 'shortlisting' | 'approvals' | 'offers' | 'analytics' | 'alerts' | 'reports';
   onNavigate?: (view: any) => void;
 };
 
@@ -27,6 +27,7 @@ export default function AdminLayout({ children, activeNav, onNavigate }: Props) 
     { key: 'drives',       label: 'Drives',         icon: <Briefcase size={16} />,   path: ROUTES.driveManagement    },
     { key: 'eligibility',  label: 'Eligibility',    icon: <CheckSquare size={16} />, path: ROUTES.driveEligibility   },
     { key: 'shortlisting', label: 'Shortlisting',   icon: <ListChecks size={16} />,  path: ROUTES.shortlisting       },
+    { key: 'approvals',    label: 'Drive Approvals',icon: <CheckSquare size={16} />, path: ROUTES.driveApprovals     },
     { key: 'offers',       label: 'Offers',         icon: <Award size={16} />,       path: ROUTES.offerManagement    },
     { key: 'students',     label: 'Students',       icon: <Users size={16} />,       path: ROUTES.studentManagement  },
     { key: 'analytics',    label: 'Analytics',      icon: <BarChart3 size={16} />,   path: ROUTES.analytics          },

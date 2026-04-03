@@ -11,6 +11,7 @@ import CompanyManagement from './pages/CompanyManagement';
 import DriveManagement from './pages/DriveManagement';
 import DriveEligibility from './pages/DriveEligibility';
 import Shortlisting from './pages/Shortlisting';
+import DriveApprovals from './pages/DriveApprovals';
 import OfferManagement from './pages/OfferManagement';
 import StudentManagement from './pages/StudentManagement';
 import Analytics from './pages/Analytics';
@@ -41,6 +42,7 @@ const VIEW_TO_PATH: Record<string, string> = {
   driveManagement:     ROUTES.driveManagement,
   driveEligibility:    ROUTES.driveEligibility,
   shortlisting:        ROUTES.shortlisting,
+  driveApprovals:      ROUTES.driveApprovals,
   offerManagement:     ROUTES.offerManagement,
   studentManagement:   ROUTES.studentManagement,
   analytics:           ROUTES.analytics,
@@ -150,6 +152,7 @@ function AppRoutes() {
       <Route path={ROUTES.driveManagement}    element={<RequireAdmin><DriveManagement        onNavigate={goto} /></RequireAdmin>} />
       <Route path={ROUTES.driveEligibility}   element={<RequireAdmin><DriveEligibility       onNavigate={goto} /></RequireAdmin>} />
       <Route path={ROUTES.shortlisting}       element={<RequireAdmin><Shortlisting           onNavigate={goto} /></RequireAdmin>} />
+      <Route path={ROUTES.driveApprovals}     element={<RequireAdmin><DriveApprovals         onNavigate={goto} /></RequireAdmin>} />
       <Route path={ROUTES.offerManagement}    element={<RequireAdmin><OfferManagement        onNavigate={goto} /></RequireAdmin>} />
 
       {/* ── Catch-all: 404 (NOT redirect to home) ── */}

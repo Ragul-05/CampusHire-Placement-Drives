@@ -21,6 +21,7 @@ export const ROUTES = {
   driveManagement:      '/admin/drives',
   driveEligibility:     '/admin/eligibility',
   shortlisting:         '/admin/shortlisting',
+  driveApprovals:       '/admin/drive-approvals',
   offerManagement:      '/admin/offers',
   studentManagement:    '/admin/students',
   analytics:            '/admin/analytics',

@@ -33,6 +33,9 @@ public class DriveApplication {
     @Builder.Default
     private Boolean facultyApproved = false;
 
+    @Builder.Default
+    private Boolean submittedToAdmin = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "last_updated_by")
     private User lastUpdatedBy; // Faculty/Admin advancing the stage.

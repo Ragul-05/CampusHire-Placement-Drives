@@ -1,6 +1,7 @@
 package com.example.backend.Repositories;
 
 import com.example.backend.Models.DriveApplication;
+import com.example.backend.Models.enums.ApplicationStage;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -19,6 +20,10 @@ public interface DriveApplicationRepository extends JpaRepository<DriveApplicati
 
     java.util.List<DriveApplication> findByDriveId(Long driveId);
 
+    long countByDriveId(Long driveId);
+
+    long countByDriveIdAndStage(Long driveId, ApplicationStage stage);
+
     // Faculty Scoped Queries
     java.util.List<DriveApplication> findByStudentProfileUserDepartmentId(Long departmentId);
 
@@ -32,4 +37,6 @@ public interface DriveApplicationRepository extends JpaRepository<DriveApplicati
     Optional<DriveApplication> findByStudentProfileIdAndDriveId(Long studentId, Long driveId);
 
     java.util.List<DriveApplication> findByDriveIdAndStudentProfileIdIn(Long driveId, java.util.List<Long> studentIds);
+
+    java.util.List<DriveApplication> findByDriveIdAndFacultyApprovedTrue(Long driveId);
 }

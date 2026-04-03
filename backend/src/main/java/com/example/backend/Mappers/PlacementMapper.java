@@ -69,6 +69,9 @@ public class PlacementMapper {
         DriveApplicationDto dto = DriveApplicationDto.builder()
                 .id(app.getId())
                 .stage(app.getStage() != null ? app.getStage().name() : null)
+                .driveStatus(app.getDrive() != null && app.getDrive().getStatus() != null
+                        ? app.getDrive().getStatus().name()
+                        : null)
                 .appliedAt(app.getAppliedAt())
                 .lastUpdatedAt(app.getLastUpdatedAt())
                 .build();

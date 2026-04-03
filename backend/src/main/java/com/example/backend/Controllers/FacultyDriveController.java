@@ -84,6 +84,21 @@ public class FacultyDriveController {
         return ResponseEntity.ok(ApiResponse.success("Student approval toggled successfully", null));
     }
 
+    @AuditAction(action = "TOGGLE_BULK_STUDENT_APPROVAL", targetEntity = "DRIVE_APPLICATION")
+    @PostMapping("/approve-all")
+    public ResponseEntity<ApiResponse<Void>> toggleBulkStudentApproval(
+            @RequestBody BulkApprovalRequestDTO request,
+            @RequestParam(required = false, defaultValue = "faculty@dept.com") String facultyEmail) {
+
+        driveFilteringService.toggleFacultyApprovalForStudents(
+                request.getStudentIds(),
+                request.getDriveId(),
+                request.isApproved(),
+                facultyEmail
+        );
+        return ResponseEntity.ok(ApiResponse.success("Bulk student approval updated successfully", null));
+    }
+
     @AuditAction(action = "VIEW_DRIVE_APPLICATIONS", targetEntity = "DRIVE_APPLICATION")
     @GetMapping("/legacy/{driveId}/applications")
     public ResponseEntity<ApiResponse<List<FacultyApplicationDTO>>> getDriveApplicationsLegacy(
@@ -92,5 +107,14 @@ public class FacultyDriveController {
 
         List<FacultyApplicationDTO> participants = facultyDriveService.getDriveParticipants(driveId, facultyEmail);
         return ResponseEntity.ok(ApiResponse.success("Drive applications retrieved successfully", participants));
+    }
+
+    @PostMapping("/{driveId}/submit-drive")
+    public ResponseEntity<ApiResponse<Long>> submitDriveToAdmin(
+            @PathVariable Long driveId,
+            @RequestParam(required = false, defaultValue = "faculty@dept.com") String facultyEmail) {
+
+        long submittedCount = facultyDriveService.submitDriveToAdmin(driveId, facultyEmail);
+        return ResponseEntity.ok(ApiResponse.success("Drive applications submitted to Placement HQ successfully", submittedCount));
     }
 }

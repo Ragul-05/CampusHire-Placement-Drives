@@ -1,10 +1,12 @@
 package com.example.backend.Controllers;
 
 import com.example.backend.AOPs.AuditAction;
+import com.example.backend.DTOs.Admin.DriveApplicationDTO;
 import com.example.backend.DTOs.Admin.PlacementDriveRequestDTO;
 import com.example.backend.DTOs.Admin.PlacementDriveResponseDTO;
 import com.example.backend.Models.enums.DriveStatus;
 import com.example.backend.Services.AdminPlacementDriveService;
+import com.example.backend.Services.AdminShortlistService;
 import com.example.backend.Utils.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +21,9 @@ public class AdminPlacementDriveController {
 
     @Autowired
     private AdminPlacementDriveService placementDriveService;
+
+    @Autowired
+    private AdminShortlistService adminShortlistService;
 
     @PostMapping
     @AuditAction(action = "CREATE_DRIVE", targetEntity = "PlacementDrive")
@@ -59,5 +64,13 @@ public class AdminPlacementDriveController {
     public ResponseEntity<ApiResponse<List<PlacementDriveResponseDTO>>> getAllDrives() {
         return ResponseEntity
                 .ok(ApiResponse.success("Placement drives fetched successfully", placementDriveService.getAllDrives()));
+    }
+
+    @GetMapping("/{driveId}/students")
+    public ResponseEntity<ApiResponse<List<DriveApplicationDTO>>> getDriveStudents(@PathVariable Long driveId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Drive students fetched successfully",
+                adminShortlistService.getFacultyApprovedApplicants(driveId)
+        ));
     }
 }

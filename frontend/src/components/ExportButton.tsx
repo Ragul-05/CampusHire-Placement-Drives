@@ -10,6 +10,7 @@
  *   />
  */
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Download, FileText, Table2, ChevronDown, Loader2 } from 'lucide-react';
 import { runExport, ExportOptions } from '../utils/exportUtils';
 
@@ -22,6 +23,7 @@ interface Props {
 export default function ExportButton({ opts, disabled = false, label = 'Export' }: Props) {
   const [open, setOpen]         = useState(false);
   const [loading, setLoading]   = useState<'pdf' | 'xlsx' | null>(null);
+  const [menuStyle, setMenuStyle] = useState<{ top: number; left: number; minWidth: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   /* Close on outside click */
@@ -32,6 +34,35 @@ export default function ExportButton({ opts, disabled = false, label = 'Export' 
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const updateMenuPosition = () => {
+      if (!ref.current) return;
+      const rect = ref.current.getBoundingClientRect();
+      const minWidth = 240;
+      const width = Math.max(rect.width, minWidth);
+      const left = Math.min(
+        rect.right - width,
+        window.innerWidth - width - 12
+      );
+
+      setMenuStyle({
+        top: rect.bottom + 8,
+        left: Math.max(12, left),
+        minWidth: width,
+      });
+    };
+
+    updateMenuPosition();
+    window.addEventListener('resize', updateMenuPosition);
+    window.addEventListener('scroll', updateMenuPosition, true);
+    return () => {
+      window.removeEventListener('resize', updateMenuPosition);
+      window.removeEventListener('scroll', updateMenuPosition, true);
+    };
+  }, [open]);
 
   const handleExport = async (fmt: 'pdf' | 'xlsx') => {
     setOpen(false);
@@ -46,7 +77,11 @@ export default function ExportButton({ opts, disabled = false, label = 'Export' 
   };
 
   return (
-    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+    <div
+      ref={ref}
+      className={`export-button-wrap ${open ? 'open' : ''}`}
+      style={{ position: 'relative', display: 'inline-block' }}
+    >
       <button
         className="btn-export-trigger"
         onClick={() => !disabled && setOpen(o => !o)}
@@ -60,8 +95,11 @@ export default function ExportButton({ opts, disabled = false, label = 'Export' 
         <ChevronDown size={12} style={{ opacity: 0.6, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
       </button>
 
-      {open && (
-        <div className="export-dropdown">
+      {open && menuStyle && createPortal(
+        <div
+          className="export-dropdown export-dropdown-portal"
+          style={{ top: menuStyle.top, left: menuStyle.left, minWidth: menuStyle.minWidth }}
+        >
           <button className="export-option" onClick={() => handleExport('pdf')}>
             <div className="export-option-icon pdf"><FileText size={15} /></div>
             <div>
@@ -77,7 +115,8 @@ export default function ExportButton({ opts, disabled = false, label = 'Export' 
               <div className="export-option-sub">Spreadsheet (.xlsx) with all data</div>
             </div>
           </button>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

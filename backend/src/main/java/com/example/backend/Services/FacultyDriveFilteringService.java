@@ -79,41 +79,32 @@ public class FacultyDriveFilteringService {
 
     @Transactional(readOnly = true)
     public DriveFilterResultDTO filterEligibleStudentsForDrive(Long driveId, String facultyEmail) {
-        User faculty = getAuthenticatedFaculty(facultyEmail);
-        Long departmentId = faculty.getDepartment().getId();
+        getAuthenticatedFaculty(facultyEmail);
 
         PlacementDrive drive = placementDriveRepository.findById(driveId)
                 .orElseThrow(() -> new ResourceNotFoundException("Placement drive not found"));
 
         driveEligibilitySyncService.syncEligibleMappingsForDrive(drive);
 
-        List<StudentProfile> departmentStudents = studentProfileRepository.findByUserDepartmentId(departmentId);
-        Map<Long, DriveApplication> applications = driveApplicationRepository
-                .findByDriveIdAndStudentProfileUserDepartmentId(driveId, departmentId)
-                .stream()
-                .collect(Collectors.toMap(app -> app.getStudentProfile().getId(), app -> app, (a, b) -> a));
-
+        List<DriveApplication> driveApplications = driveApplicationRepository.findByDriveId(driveId);
         List<FacultyStudentDTO> students = new ArrayList<>();
         Map<Long, List<String>> ineligibleReasons = new java.util.LinkedHashMap<>();
 
-        for (StudentProfile student : departmentStudents) {
-            PlacementEligibilityService.EligibilityEvaluation evaluation =
-                    placementEligibilityService.evaluate(student, drive);
-
+        for (DriveApplication application : driveApplications) {
+            StudentProfile student = application.getStudentProfile();
+            PlacementEligibilityService.EligibilityEvaluation evaluation = placementEligibilityService.evaluate(student, drive);
             if (!evaluation.isEligible()) {
                 ineligibleReasons.put(student.getId(), evaluation.getReasons());
             }
-
-            students.add(mapStudentToDTO(student, applications.get(student.getId()), evaluation.isEligible()));
+            students.add(mapStudentToDTO(student, application, evaluation.isEligible()));
         }
-
-        long totalVerified = departmentStudents.stream()
-                .filter(student -> student.getVerificationStatus() == VerificationStatus.VERIFIED)
-                .count();
 
         return DriveFilterResultDTO.builder()
                 .drive(mapDriveToDTO(drive))
-                .totalVerified(totalVerified)
+                .totalVerified((long) driveApplications.stream()
+                        .filter(application -> application.getStudentProfile().getVerificationStatus() == VerificationStatus.VERIFIED)
+                        .count())
+                .totalStudents((long) driveApplications.size())
                 .eligibleStudents(students)
                 .ineligibleReasons(ineligibleReasons)
                 .build();
@@ -124,10 +115,6 @@ public class FacultyDriveFilteringService {
         User faculty = getAuthenticatedFaculty(facultyEmail);
         StudentProfile student = studentProfileRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
-
-        if (!student.getUser().getDepartment().getId().equals(faculty.getDepartment().getId())) {
-            throw new UnauthorizedActionException("Cannot approve student from different department");
-        }
 
         PlacementDrive drive = placementDriveRepository.findById(driveId)
                 .orElseThrow(() -> new ResourceNotFoundException("Drive not found"));
@@ -150,17 +137,23 @@ public class FacultyDriveFilteringService {
     }
 
     @Transactional
+    public void toggleFacultyApprovalForStudents(List<Long> studentIds, Long driveId, boolean approved, String facultyEmail) {
+        if (studentIds == null || studentIds.isEmpty()) {
+            throw new IllegalArgumentException("No students were selected for bulk approval.");
+        }
+
+        for (Long studentId : studentIds) {
+            toggleFacultyApproval(studentId, driveId, approved, facultyEmail);
+        }
+    }
+
+    @Transactional
     public void updateApplicationStage(Long studentId, Long driveId, String stage, String actorEmail) {
         User actor = userRepository.findByEmail(actorEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         StudentProfile student = studentProfileRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
-
-        if (actor.getRole() == Role.FACULTY
-                && !student.getUser().getDepartment().getId().equals(actor.getDepartment().getId())) {
-            throw new UnauthorizedActionException("Faculty cannot update student from different department");
-        }
 
         ApplicationStage targetStage = ApplicationStage.valueOf(stage);
         if (actor.getRole() == Role.FACULTY && targetStage == ApplicationStage.SELECTED) {
@@ -245,10 +238,15 @@ public class FacultyDriveFilteringService {
             fullName = (firstName + " " + lastName).trim();
         }
 
+        String rollNo = student.getRollNo();
+        if (rollNo == null || rollNo.isBlank()) {
+            rollNo = student.getUser() != null ? student.getUser().getUniversityRegNo() : null;
+        }
+
         return FacultyStudentDTO.builder()
                 .id(student.getId())
                 .userId(student.getUser().getId())
-                .rollNo(student.getRollNo())
+                .rollNo(rollNo)
                 .batch(student.getBatch())
                 .name(fullName)
                 .email(student.getUser().getEmail())

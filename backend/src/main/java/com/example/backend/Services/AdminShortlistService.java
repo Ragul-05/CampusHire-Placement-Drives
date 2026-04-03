@@ -1,10 +1,12 @@
 package com.example.backend.Services;
 
 import com.example.backend.DTOs.Admin.DriveApplicationDTO;
+import com.example.backend.DTOs.Admin.AdminStageUpdateRequestDTO;
 import com.example.backend.DTOs.Admin.ShortlistRequestDTO;
 import com.example.backend.Exceptions.ResourceNotFoundException;
 import com.example.backend.Models.DriveApplication;
 import com.example.backend.Models.Offer;
+import com.example.backend.Models.StudentSkill;
 import com.example.backend.Models.User;
 import com.example.backend.Models.enums.ApplicationStage;
 import com.example.backend.Repositories.DriveApplicationRepository;
@@ -13,6 +15,7 @@ import com.example.backend.Repositories.PlacementDriveRepository;
 import com.example.backend.Repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -36,6 +39,7 @@ public class AdminShortlistService {
     @Autowired
     private DriveEligibilitySyncService driveEligibilitySyncService;
 
+    @Transactional(readOnly = true)
     public List<DriveApplicationDTO> getEligibleApplicants(Long driveId) {
         if (!placementDriveRepository.existsById(driveId)) {
             throw new ResourceNotFoundException("Placement Drive not found");
@@ -53,6 +57,31 @@ public class AdminShortlistService {
 
     public List<DriveApplicationDTO> getFacultyApprovedApplicants(Long driveId) {
         return getEligibleApplicants(driveId);
+    }
+
+    @Transactional
+    public DriveApplicationDTO updateAdminStage(AdminStageUpdateRequestDTO request, String adminEmail) {
+        if (request.getStage() != ApplicationStage.SELECTED) {
+            throw new IllegalArgumentException("Placement Head can finalize only the SELECTED stage from this page.");
+        }
+
+        DriveApplication application = driveApplicationRepository
+                .findByStudentProfileIdAndDriveId(request.getStudentId(), request.getDriveId())
+                .orElseThrow(() -> new ResourceNotFoundException("Approved student mapping not found for this drive"));
+
+        if (!Boolean.TRUE.equals(application.getFacultyApproved())) {
+            throw new IllegalArgumentException("Only faculty-approved students can be finalized by Placement Head.");
+        }
+
+        User admin = userRepository.findByEmail(adminEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Placement Head account not found"));
+
+        application.setStage(request.getStage());
+        application.setSubmittedToAdmin(true);
+        application.setLastUpdatedAt(LocalDateTime.now());
+        application.setLastUpdatedBy(admin);
+
+        return mapToDTO(driveApplicationRepository.save(application));
     }
 
     public List<DriveApplicationDTO> generateShortlist(Long driveId, ShortlistRequestDTO request, String adminEmail) {
@@ -113,6 +142,9 @@ public class AdminShortlistService {
                 .companyName(app.getDrive().getCompany() != null ? app.getDrive().getCompany().getName() : null)
                 .role(offer != null ? offer.getRole() : app.getDrive().getRole())
                 .offerCtc(offer != null ? offer.getCtc() : null)
+                .skills(app.getStudentProfile().getSkills() != null
+                        ? app.getStudentProfile().getSkills().stream().map(StudentSkill::getSkillName).collect(Collectors.toList())
+                        : List.of())
                 .build();
     }
 }

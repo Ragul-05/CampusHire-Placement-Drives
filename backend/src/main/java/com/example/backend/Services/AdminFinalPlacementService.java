@@ -54,6 +54,7 @@ public class AdminFinalPlacementService {
         for (DriveApplication app : apps) {
             if (app.getDrive().getId().equals(driveId)) {
                 app.setStage(ApplicationStage.SELECTED);
+                app.setSubmittedToAdmin(true);
                 applicationRepository.save(app);
             }
         }

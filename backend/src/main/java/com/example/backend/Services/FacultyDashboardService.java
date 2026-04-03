@@ -56,20 +56,30 @@ public class FacultyDashboardService {
         }
 
         Long departmentId = faculty.getDepartment().getId();
+        List<StudentProfile> visibleStudents = studentProfileRepository.findAll();
 
-        // Core Stats
-        long totalStudents = studentProfileRepository.countByUserDepartmentId(departmentId);
-        long verifiedStudents = studentProfileRepository.countByUserDepartmentIdAndVerificationStatus(
-                departmentId, VerificationStatus.VERIFIED);
-        long pendingVerifications = facultyStudentService.getDepartmentStudents(facultyEmail, "PENDING").size();
-        long rejectedStudents = studentProfileRepository.countByUserDepartmentIdAndVerificationStatus(
-                departmentId, VerificationStatus.REJECTED);
-        long placedStudents = studentProfileRepository.countByUserDepartmentIdAndIsPlacedTrue(departmentId);
-        long eligibleForDrives = studentProfileRepository.countByUserDepartmentIdAndIsEligibleForPlacementsTrue(departmentId);
-        long activeApplications = driveApplicationRepository.findByStudentProfileUserDepartmentId(departmentId).size();
+        long totalStudents = visibleStudents.size();
+        long verifiedStudents = visibleStudents.stream()
+                .filter(student -> student.getVerificationStatus() == VerificationStatus.VERIFIED)
+                .count();
+        long pendingVerifications = visibleStudents.stream()
+                .filter(student -> student.getVerificationStatus() == null
+                        || student.getVerificationStatus() == VerificationStatus.PENDING)
+                .count();
+        long rejectedStudents = visibleStudents.stream()
+                .filter(student -> student.getVerificationStatus() == VerificationStatus.REJECTED)
+                .count();
+        long placedStudents = visibleStudents.stream()
+                .filter(student -> Boolean.TRUE.equals(student.getIsPlaced()))
+                .count();
+        long eligibleForDrives = visibleStudents.stream()
+                .filter(student -> Boolean.TRUE.equals(student.getIsEligibleForPlacements()))
+                .count();
+        long activeApplications = driveApplicationRepository.findAll().size();
 
-        long ongoingDrives = placementDriveRepository.countByAllowedDepartmentIdAndStatus(
-                departmentId, DriveStatus.ONGOING);
+        long ongoingDrives = placementDriveRepository.findAll().stream()
+                .filter(drive -> drive.getStatus() == DriveStatus.ONGOING)
+                .count();
 
         double placementPercentage = totalStudents > 0 ?
             Math.round(((double) placedStudents / totalStudents) * 100.0 * 100.0) / 100.0 : 0.0;
@@ -131,14 +141,15 @@ public class FacultyDashboardService {
 
     private List<FacultyDashboardStatsDTO.DriveEligibility> calculateDriveEligibility(Long departmentId) {
         List<PlacementDrive> activeDrives = placementDriveRepository
-                .findByStatusInAndAllowedDepartmentId(
-                        Arrays.asList(DriveStatus.UPCOMING, DriveStatus.ONGOING),
-                        departmentId);
+                .findAll()
+                .stream()
+                .filter(drive -> Arrays.asList(DriveStatus.UPCOMING, DriveStatus.ONGOING).contains(drive.getStatus()))
+                .collect(Collectors.toList());
 
         return activeDrives.stream()
                 .map(drive -> {
                     // Count verified students who meet eligibility criteria
-                    long eligibleCount = countEligibleStudents(departmentId, drive);
+                    long eligibleCount = countEligibleStudents(drive);
 
                     String driveTitle = drive.getTitle() != null ? drive.getTitle() : drive.getRole();
 
@@ -150,9 +161,9 @@ public class FacultyDashboardService {
                 .collect(Collectors.toList());
     }
 
-    private long countEligibleStudents(Long departmentId, PlacementDrive drive) {
+    private long countEligibleStudents(PlacementDrive drive) {
         List<StudentProfile> verifiedStudents = studentProfileRepository
-                .findByUserDepartmentIdAndVerificationStatus(departmentId, VerificationStatus.VERIFIED);
+                .findByVerificationStatus(VerificationStatus.VERIFIED);
 
         return verifiedStudents.stream()
                 .filter(student -> placementEligibilityService.evaluate(student, drive).isEligible())

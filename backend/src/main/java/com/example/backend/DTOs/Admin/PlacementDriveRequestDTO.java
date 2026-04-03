@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 @Data
 public class PlacementDriveRequestDTO {
     @NotNull(message = "Company ID is required")
@@ -23,4 +25,10 @@ public class PlacementDriveRequestDTO {
 
     // Optional, defaults to UPCOMING if null
     private DriveStatus status;
+
+    private LocalDateTime applicationDeadline;
+
+    private Integer totalOpenings;
+
+    private EligibilityCriteriaDTO eligibilityCriteria;
 }

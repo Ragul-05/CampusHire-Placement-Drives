@@ -14,6 +14,7 @@ import java.util.Map;
 public class DriveFilterResultDTO {
     private FacultyDriveDTO drive;
     private Long totalVerified;
+    private Long totalStudents;
     private List<FacultyStudentDTO> eligibleStudents;
     private Map<Long, List<String>> ineligibleReasons;
 }

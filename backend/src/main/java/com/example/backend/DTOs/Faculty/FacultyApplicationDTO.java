@@ -24,4 +24,9 @@ public class FacultyApplicationDTO {
     private String verificationStatus;
     private Boolean isEligibleForPlacements;
     private Boolean facultyApproved;
+    private Boolean submittedToAdmin;
+    private String driveStatus;
+    private String offerCompany;
+    private String offerRole;
+    private Double offerCtc;
 }

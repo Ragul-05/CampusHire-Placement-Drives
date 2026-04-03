@@ -4,6 +4,8 @@ import com.example.backend.Models.enums.ApplicationStage;
 import lombok.Builder;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 @Builder
 public class DriveApplicationDTO {
@@ -14,4 +16,10 @@ public class DriveApplicationDTO {
     private String departmentName;
     private Double cgpa;
     private ApplicationStage stage;
+    private Boolean facultyApproved;
+    private Boolean submittedToAdmin;
+    private String companyName;
+    private String role;
+    private Double offerCtc;
+    private List<String> skills;
 }

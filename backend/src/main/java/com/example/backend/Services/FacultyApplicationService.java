@@ -56,15 +56,10 @@ public class FacultyApplicationService {
     }
 
     public void updateApplicationStage(Long applicationId, StageUpdateRequestDTO request, String facultyEmail) {
-        User faculty = getAuthenticatedFaculty(facultyEmail);
+        getAuthenticatedFaculty(facultyEmail);
 
         DriveApplication application = driveApplicationRepository.findById(applicationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
-
-        if (!application.getStudentProfile().getUser().getDepartment().getId()
-                .equals(faculty.getDepartment().getId())) {
-            throw new UnauthorizedActionException("Cannot update application for student in another department");
-        }
 
         ApplicationStage targetStage = request.getTargetStage();
         ApplicationStage currentStage = application.getStage();

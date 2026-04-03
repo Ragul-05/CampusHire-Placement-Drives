@@ -63,7 +63,8 @@ function stageIndex(s: Stage) { return STAGE_ORDER.indexOf(s); }
 function allowedNextStages(current: Stage): Stage[] {
   if (current === 'SELECTED') return [];
   const idx = stageIndex(current);
-  return ASSIGNABLE_STAGES.filter(s => stageIndex(s) > idx);
+  const nextStage = ASSIGNABLE_STAGES.find(s => stageIndex(s) === idx + 1);
+  return nextStage ? [nextStage] : [];
 }
 
 /* ── Stage Badge ── */

@@ -32,11 +32,9 @@ public class PlacementResultsController {
             @RequestParam(required = false) String facultyEmail,
             Authentication authentication) {
 
-        User actor = resolveActor(authentication, email, facultyEmail);
+        resolveActor(authentication, email, facultyEmail);
 
-        PlacementResultsResponseDTO response = actor.getRole() == Role.FACULTY
-                ? placementResultsService.getFacultyPlacementResults(actor.getEmail())
-                : placementResultsService.getAdminPlacementResults();
+        PlacementResultsResponseDTO response = placementResultsService.getAdminPlacementResults();
 
         return ResponseEntity.ok(ApiResponse.success("Placement results retrieved successfully", response));
     }

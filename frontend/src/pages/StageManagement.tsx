@@ -1,17 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   ChevronLeft, RefreshCw, Briefcase, Search, Filter,
-  CheckCircle2, AlertCircle, X, ChevronDown, ArrowRight,
+  CheckCircle2, AlertCircle, X, ArrowRight,
   Clock, BookOpen, Users, Star, Layers
 } from 'lucide-react';
 import '../styles/dashboard.css';
 import { getJson, putJson, facultyUrl } from '../utils/api';
 import FacultyLayout from '../components/FacultyLayout';
+import { isFacultyEditableStage } from '../utils/stageOptions';
+import StageDropdown from '../components/StageDropdown';
 
 /* ══════════════════════════════
    TYPES — aligned with backend DTOs
 ══════════════════════════════ */
-type Stage = 'ELIGIBLE' | 'ASSESSMENT' | 'TECHNICAL' | 'HR' | 'SELECTED';
+type Stage = 'ELIGIBLE' | 'APPLIED' | 'ASSESSMENT' | 'TECHNICAL' | 'HR' | 'SELECTED' | 'REJECTED';
 
 /* FacultyApplicationDTO fields:
    id, studentId, studentName, rollNo, driveId,
@@ -26,6 +28,7 @@ type ApplicationRow = {
   driveRole: string;       // ✅ FacultyApplicationDTO.driveRole  (not driveTitle)
   companyName: string;     // ✅ FacultyApplicationDTO.companyName
   stage: Stage;            // ✅ FacultyApplicationDTO.stage (ApplicationStage enum)
+  facultyApproved?: boolean;
   appliedAt: string;
   lastUpdatedAt: string;   // ✅ FacultyApplicationDTO.lastUpdatedAt
 };
@@ -43,28 +46,29 @@ type Drive = {
 /* ══════════════════════════════
    CONSTANTS
 ══════════════════════════════ */
-const STAGE_ORDER: Stage[] = ['ELIGIBLE', 'ASSESSMENT', 'TECHNICAL', 'HR', 'SELECTED'];
+const STAGE_ORDER: Stage[] = ['ELIGIBLE', 'APPLIED', 'ASSESSMENT', 'TECHNICAL', 'HR', 'SELECTED', 'REJECTED'];
 
 const STAGE_META: Record<Stage, { label: string; cls: string; icon: JSX.Element; color: string }> = {
   ELIGIBLE:   { label: 'Eligible',   cls: 'success', icon: <CheckCircle2 size={11} />, color: '#10b981' },
+  APPLIED:    { label: 'Applied',    cls: 'info',    icon: <BookOpen size={11} />,      color: '#3b82f6' },
   ASSESSMENT: { label: 'Assessment', cls: 'warning', icon: <Clock size={11} />,     color: '#f59e0b' },
   TECHNICAL:  { label: 'Technical',  cls: 'warning', icon: <Layers size={11} />,    color: '#8b5cf6' },
   HR:         { label: 'HR Round',   cls: 'warning', icon: <Users size={11} />,     color: '#06b6d4' },
   SELECTED:   { label: 'Selected',   cls: 'success', icon: <Star size={11} />,      color: '#10b981' },
+  REJECTED:   { label: 'Rejected',   cls: 'danger',  icon: <AlertCircle size={11} />, color: '#ef4444' },
 };
-
-const ASSIGNABLE_STAGES: Stage[] = ['ELIGIBLE', 'ASSESSMENT', 'TECHNICAL', 'HR'];
 
 /* ══════════════════════════════
    HELPERS
 ══════════════════════════════ */
 function stageIndex(s: Stage) { return STAGE_ORDER.indexOf(s); }
 
-function allowedNextStages(current: Stage): Stage[] {
-  if (current === 'SELECTED') return [];
-  const idx = stageIndex(current);
-  const nextStage = ASSIGNABLE_STAGES.find(s => stageIndex(s) === idx + 1);
-  return nextStage ? [nextStage] : [];
+function coerceStage(value: unknown): Stage {
+  const s = (typeof value === 'string' ? value : '').toUpperCase();
+  if (s === 'ELIGIBLE' || s === 'APPLIED' || s === 'ASSESSMENT' || s === 'TECHNICAL' || s === 'HR' || s === 'SELECTED' || s === 'REJECTED') {
+    return s;
+  }
+  return 'ELIGIBLE';
 }
 
 /* ── Stage Badge ── */
@@ -147,7 +151,7 @@ export default function StageManagement({ onNavigate }: { onNavigate?: (view: an
   const [refreshKey, setRefreshKey]         = useState(0);
   const [updating, setUpdating]             = useState<number | null>(null);
   const [pendingUpdate, setPendingUpdate]   = useState<{
-    appId: number; studentName: string; from: Stage; to: Stage;
+    studentId: number; driveId: number; studentName: string; from: Stage; to: Stage;
   } | null>(null);
 
   /* ── Load drives ──
@@ -190,7 +194,13 @@ export default function StageManagement({ onNavigate }: { onNavigate?: (view: an
         const res = await getJson<ApplicationRow[]>(
           facultyUrl(`/api/faculty/drives/${selectedDriveId}/participants`)
         );
-        if (active) setApplications(res.data || []);
+        if (active) {
+          const normalized = (res.data || []).map((row: any) => ({
+            ...row,
+            stage: coerceStage(row?.stage),
+          }));
+          setApplications(normalized);
+        }
       } catch (e: any) {
         if (active) setToast({ msg: e.message || 'Failed to load applications', type: 'error' });
       } finally {
@@ -200,6 +210,12 @@ export default function StageManagement({ onNavigate }: { onNavigate?: (view: an
     return () => { active = false; };
   }, [selectedDriveId, refreshKey]);
 
+  useEffect(() => {
+    if (!selectedDriveId) return;
+    const timer = setInterval(() => setRefreshKey(k => k + 1), 10000);
+    return () => clearInterval(timer);
+  }, [selectedDriveId]);
+
   /* ── Filtered + searched rows ── */
   const displayed = useMemo(() => {
     let list = applications;
@@ -208,10 +224,10 @@ export default function StageManagement({ onNavigate }: { onNavigate?: (view: an
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(a =>
-        a.studentName.toLowerCase().includes(q) ||
-        a.rollNo.toLowerCase().includes(q) ||                   // ✅ rollNo
+        (a.studentName ?? '').toLowerCase().includes(q) ||
+        (a.rollNo ?? '').toLowerCase().includes(q) ||                   // ✅ rollNo
         (a.department ?? '').toLowerCase().includes(q) ||
-        a.driveRole.toLowerCase().includes(q)                   // ✅ driveRole
+        (a.driveRole ?? '').toLowerCase().includes(q)                   // ✅ driveRole
       );
     }
     return list;
@@ -226,23 +242,29 @@ export default function StageManagement({ onNavigate }: { onNavigate?: (view: an
 
   /* ── Request stage change ── */
   const requestStageChange = (app: ApplicationRow, newStage: Stage) => {
-    setPendingUpdate({ appId: app.id, studentName: app.studentName, from: app.stage, to: newStage });
+    setPendingUpdate({
+      studentId: app.studentId,
+      driveId: app.driveId,
+      studentName: app.studentName,
+      from: app.stage,
+      to: newStage,
+    });
   };
 
   /* ── Confirm & submit ──
-     ✅ PUT /api/faculty/applications/{id}/stage?facultyEmail=
-     ✅ body: StageUpdateRequestDTO { targetStage: ApplicationStage } */
+      ✅ PUT /api/stage/update?email=
+     ✅ body: { studentId, driveId, stage } */
   const confirmStageChange = async () => {
     if (!pendingUpdate) return;
-    const { appId, to } = pendingUpdate;
+    const { studentId, driveId, to } = pendingUpdate;
     try {
-      setUpdating(appId);
+      setUpdating(studentId);
       await putJson(
-        facultyUrl(`/api/faculty/applications/${appId}/stage`),
-        { targetStage: to }   // ✅ StageUpdateRequestDTO field name is "targetStage"
+        facultyUrl('/api/stage/update'),
+        { studentId, driveId, stage: to }
       );
       setApplications(prev =>
-        prev.map(a => a.id === appId
+        prev.map(a => (a.studentId === studentId && a.driveId === driveId)
           ? { ...a, stage: to, lastUpdatedAt: new Date().toISOString() }
           : a
         )
@@ -261,10 +283,12 @@ export default function StageManagement({ onNavigate }: { onNavigate?: (view: an
   const stageTabs: { key: Stage | 'ALL'; label: string; color: string }[] = [
     { key: 'ALL',        label: 'All',        color: '#6366f1' },
     { key: 'ELIGIBLE',   label: 'Eligible',   color: '#10b981' },
+    { key: 'APPLIED',    label: 'Applied',    color: '#3b82f6' },
     { key: 'ASSESSMENT', label: 'Assessment', color: '#f59e0b' },
     { key: 'TECHNICAL',  label: 'Technical',  color: '#8b5cf6' },
     { key: 'HR',         label: 'HR Round',   color: '#06b6d4' },
     { key: 'SELECTED',   label: 'Selected',   color: '#10b981' },
+    { key: 'REJECTED',   label: 'Rejected',   color: '#ef4444' },
   ];
 
   /* ══ RENDER ══ */
@@ -424,9 +448,10 @@ export default function StageManagement({ onNavigate }: { onNavigate?: (view: an
                     </thead>
                     <tbody>
                       {displayed.map((app, idx) => {
-                        const nextStages  = allowedNextStages(app.stage);
-                        const isUpdating  = updating === app.id;
+                        const isUpdating  = updating === app.studentId;
                         const isSelected  = app.stage === 'SELECTED';
+                        const isRejected  = app.stage === 'REJECTED';
+                        const canEditStage = Boolean(app.facultyApproved) && !isSelected && !isRejected;
                         return (
                           <tr key={app.id} className={`sm-row ${isSelected ? 'sm-row-selected' : ''}`}>
                             <td className="sm-row-num">{idx + 1}</td>
@@ -474,27 +499,27 @@ export default function StageManagement({ onNavigate }: { onNavigate?: (view: an
                                 <span className="sm-terminal-badge">
                                   <Star size={13} color="#f59e0b" /> Placement Confirmed
                                 </span>
-                              ) : nextStages.length === 0 ? (
-                                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>
+                              ) : isRejected ? (
+                                <span className="sm-terminal-badge" style={{ background: '#fee2e2', color: '#b91c1c', borderColor: '#fecaca' }}>
+                                  <AlertCircle size={13} color="#ef4444" /> Rejected
+                                </span>
                               ) : (
-                                <div className="sm-advance-wrap">
-                                  <select
-                                    className="sm-stage-select"
-                                    defaultValue=""
-                                    disabled={isUpdating}
-                                    onChange={e => {
-                                      if (e.target.value) {
-                                        requestStageChange(app, e.target.value as Stage);
-                                        e.target.value = '';
+                                <div className="sm-advance-wrap sm-advance-wrap-full">
+                                  <StageDropdown
+                                    value={app.stage}
+                                    disableSelected
+                                    disabled={!canEditStage || isUpdating}
+                                    className="sm-stage-select-unified"
+                                    onChange={(next) => {
+                                      const target = next as Stage;
+                                      if (!isFacultyEditableStage(target)) {
+                                        setToast({ msg: 'Faculty can update stages only up to HR.', type: 'error' });
+                                        return;
                                       }
+                                      if (target === app.stage || (app.stage === 'APPLIED' && target === 'ELIGIBLE')) return;
+                                      requestStageChange(app, target);
                                     }}
-                                  >
-                                    <option value="" disabled>Move to…</option>
-                                    {nextStages.map(s => (
-                                      <option key={s} value={s}>{STAGE_META[s].label}</option>
-                                    ))}
-                                  </select>
-                                  <ChevronDown size={14} className="sm-select-arrow" />
+                                  />
                                   {isUpdating && <div className="sm-spinner" />}
                                 </div>
                               )}

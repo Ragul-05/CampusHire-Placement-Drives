@@ -5,9 +5,10 @@ import {
   Award, Star, ArrowUpDown, CheckCircle2, X
 } from 'lucide-react';
 import '../styles/dashboard.css';
-import { getJson, postJson, facultyUrl } from '../utils/api';
+import { getJson, postJson, putJson, facultyUrl } from '../utils/api';
 import FacultyLayout from '../components/FacultyLayout';
 import ExportButton from '../components/ExportButton';
+import { PLACEMENT_STAGE_OPTIONS } from '../utils/stageOptions';
 
 /* ════════════════ TYPES — aligned with backend DTOs ════════════════ */
 type EligibilityCriteria = {
@@ -285,10 +286,9 @@ export default function DriveFiltering({ onNavigate }: { onNavigate?: (view: any
   /* ── Stage update ── */
   const updateStage = async (studentId: number, stage: string) => {
     try {
-      // ✅ POST /api/faculty/drives/{studentId}/stage?facultyEmail= body: {driveId, stage}
-      await postJson(
-        facultyUrl(`/api/faculty/drives/${studentId}/stage`),
-        { driveId: selectedDriveId, stage }
+      await putJson(
+        facultyUrl('/api/stage/update'),
+        { studentId, driveId: selectedDriveId, stage }
       );
       setToast({ msg: 'Stage updated successfully!', type: 'success' });
       if (selectedDriveId) runFilter(selectedDriveId as number);
@@ -361,7 +361,7 @@ export default function DriveFiltering({ onNavigate }: { onNavigate?: (view: any
     try {
       setSendingToAdmin(true);
       await postJson(
-        facultyUrl('/api/faculty/students/send-to-admin'),
+        facultyUrl('/api/faculty/send-to-admin'),
         { driveId: selectedDrive.id, studentIds: approvedStudentIds }
       );
       setToast({ msg: 'Approved students sent to admin successfully!', type: 'success' });
@@ -733,10 +733,11 @@ export default function DriveFiltering({ onNavigate }: { onNavigate?: (view: any
                                  onChange={e => updateStage(s.id, e.target.value)}
                                  disabled={!s.facultyApproved}
                                >
-                                 <option value="ELIGIBLE">Eligible</option>
-                                 <option value="ASSESSMENT">Assessment</option>
-                                 <option value="TECHNICAL">Technical</option>
-                                 <option value="HR">HR Round</option>
+                                 {PLACEMENT_STAGE_OPTIONS.map(stage => (
+                                   <option key={stage} value={stage} disabled={stage === 'SELECTED'}>
+                                     {stage === 'ASSESSMENT' ? 'Assessment' : stage === 'TECHNICAL' ? 'Technical' : stage === 'HR' ? 'HR Round' : stage === 'ELIGIBLE' ? 'Eligible' : 'Selected'}
+                                   </option>
+                                 ))}
                                </select>
                              ) : (
                                <Star size={14} color={s.currentStage === 'SELECTED' ? '#f59e0b' : '#d1d5db'} />

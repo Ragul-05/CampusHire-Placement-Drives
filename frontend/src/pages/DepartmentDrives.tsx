@@ -4,7 +4,7 @@ import {
   Clock, XCircle, AlertCircle, CheckCircle2, X, Eye, Award, Search, Filter
 } from 'lucide-react';
 import '../styles/dashboard.css';
-import { getJson, postJson, facultyUrl } from '../utils/api';
+import { getJson, postJson, putJson, facultyUrl } from '../utils/api';
 import FacultyLayout from '../components/FacultyLayout';
 import ExportButton from '../components/ExportButton';
 
@@ -150,10 +150,7 @@ function DriveStudentsModal({
   async function handleStageChange(studentId: number, stage: string) {
     try {
       setUpdatingStudentId(studentId);
-      await postJson(facultyUrl(`/api/faculty/drives/${studentId}/stage`), {
-        driveId: drive.id,
-        stage,
-      });
+      await putJson(facultyUrl('/api/stage/update'), { studentId, driveId: drive.id, stage });
       setStudents((current) =>
         current.map((student) =>
           student.studentId === studentId ? { ...student, stage: stage as Participant['stage'] } : student

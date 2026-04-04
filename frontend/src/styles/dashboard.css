@@ -3920,6 +3920,21 @@
   padding-bottom: 4px;
 }
 
+.pr-page-enter {
+  animation: prPageEnter 220ms ease;
+}
+
+@keyframes prPageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .pr-section-title {
   margin: 0 0 10px;
   font-size: 15px;

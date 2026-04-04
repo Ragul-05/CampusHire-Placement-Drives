@@ -106,10 +106,16 @@ export default function PlacementResults({ onNavigate }: { onNavigate?: (view: s
   const [statusPage, setStatusPage] = useState(1);
   const [companyPage, setCompanyPage] = useState(1);
   const [trackingPage, setTrackingPage] = useState(1);
+  const [statusAnimating, setStatusAnimating] = useState(false);
+  const [companyAnimating, setCompanyAnimating] = useState(false);
+  const [trackingAnimating, setTrackingAnimating] = useState(false);
 
   const pieChartRef = useRef<HTMLDivElement | null>(null);
   const companyBarRef = useRef<HTMLDivElement | null>(null);
   const roundBarRef = useRef<HTMLDivElement | null>(null);
+  const statusTableRef = useRef<HTMLDivElement | null>(null);
+  const companyTableRef = useRef<HTMLDivElement | null>(null);
+  const trackingTableRef = useRef<HTMLDivElement | null>(null);
 
   const loadResults = useCallback(async (silent = false) => {
     try {
@@ -148,6 +154,27 @@ export default function PlacementResults({ onNavigate }: { onNavigate?: (view: s
   useEffect(() => { setStatusPage(1); }, [placementFilter, companyFilter]);
   useEffect(() => { setCompanyPage(1); }, [companyFilter]);
   useEffect(() => { setTrackingPage(1); }, [placementFilter, companyFilter, studentSearch, selectedStudentId]);
+
+  useEffect(() => {
+    setStatusAnimating(true);
+    const timer = window.setTimeout(() => setStatusAnimating(false), 240);
+    statusTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return () => window.clearTimeout(timer);
+  }, [statusPage]);
+
+  useEffect(() => {
+    setCompanyAnimating(true);
+    const timer = window.setTimeout(() => setCompanyAnimating(false), 240);
+    companyTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return () => window.clearTimeout(timer);
+  }, [companyPage]);
+
+  useEffect(() => {
+    setTrackingAnimating(true);
+    const timer = window.setTimeout(() => setTrackingAnimating(false), 240);
+    trackingTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return () => window.clearTimeout(timer);
+  }, [trackingPage]);
 
   const summary = data?.summary;
   const statusRows = data?.placedVsUnplaced || [];
@@ -625,7 +652,7 @@ export default function PlacementResults({ onNavigate }: { onNavigate?: (view: s
               </div>
             </div>
 
-            <div className="card table-card" style={{ marginTop: 18 }}>
+            <div ref={statusTableRef} className="card table-card" style={{ marginTop: 18 }}>
               <div className="table-header-row" style={{ gap: 10, flexWrap: 'wrap' }}>
                 <div className="table-info">Placed vs Unplaced ({filteredStatusRows.length})</div>
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -663,7 +690,7 @@ export default function PlacementResults({ onNavigate }: { onNavigate?: (view: s
                       <th>CTC (LPA)</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className={statusAnimating ? 'pr-page-enter' : ''}>
                     {filteredStatusRows.length === 0 && (
                       <tr><td colSpan={5} style={{ textAlign: 'center', padding: 30 }}>No records found</td></tr>
                     )}
@@ -692,7 +719,7 @@ export default function PlacementResults({ onNavigate }: { onNavigate?: (view: s
               )}
             </div>
 
-            <div className="card table-card" style={{ marginTop: 18 }}>
+            <div ref={companyTableRef} className="card table-card" style={{ marginTop: 18 }}>
               <div className="table-header-row">
                 <div className="table-info">Company-wise Round Analysis ({filteredCompanyRows.length})</div>
               </div>
@@ -706,7 +733,7 @@ export default function PlacementResults({ onNavigate }: { onNavigate?: (view: s
                       <th>Round 3 (HR)</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className={companyAnimating ? 'pr-page-enter' : ''}>
                     {filteredCompanyRows.length === 0 && (
                       <tr><td colSpan={4} style={{ textAlign: 'center', padding: 30 }}>No round data found</td></tr>
                     )}
@@ -730,7 +757,7 @@ export default function PlacementResults({ onNavigate }: { onNavigate?: (view: s
               )}
             </div>
 
-            <div className="card table-card" style={{ marginTop: 18 }}>
+            <div ref={trackingTableRef} className="card table-card" style={{ marginTop: 18 }}>
               <div className="table-header-row" style={{ gap: 10, flexWrap: 'wrap' }}>
                 <div className="table-info">Student Round Tracking ({filteredTrackingRows.length})</div>
                 <div className="sv-search-box" style={{ maxWidth: 320, marginLeft: 'auto' }}>
@@ -848,7 +875,7 @@ export default function PlacementResults({ onNavigate }: { onNavigate?: (view: s
                       <th>Rounds Cleared</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className={trackingAnimating ? 'pr-page-enter' : ''}>
                     {filteredTrackingRows.length === 0 && (
                       <tr><td colSpan={4} style={{ textAlign: 'center', padding: 30 }}>No tracking data found</td></tr>
                     )}

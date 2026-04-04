@@ -7,7 +7,7 @@ import { ROUTES } from '../utils/routes';
 
 type Props = {
   children: ReactNode;
-  activeNav?: 'overview' | 'drives' | 'companies' | 'students' | 'eligibility' | 'shortlisting' | 'approvals' | 'offers' | 'analytics' | 'alerts' | 'reports';
+  activeNav?: 'overview' | 'drives' | 'companies' | 'students' | 'eligibility' | 'shortlisting' | 'approvals' | 'offers' | 'placementResults' | 'analytics' | 'alerts' | 'reports';
   onNavigate?: (view: any) => void;
 };
 
@@ -29,6 +29,7 @@ export default function AdminLayout({ children, activeNav, onNavigate }: Props) 
     { key: 'shortlisting', label: 'Shortlisting',   icon: <ListChecks size={16} />,  path: ROUTES.shortlisting       },
     { key: 'approvals',    label: 'Drive Approvals',icon: <CheckSquare size={16} />, path: ROUTES.driveApprovals     },
     { key: 'offers',       label: 'Offers',         icon: <Award size={16} />,       path: ROUTES.offerManagement    },
+    { key: 'placementResults', label: 'Placement Results', icon: <BarChart3 size={16} />, path: ROUTES.adminPlacementResults },
     { key: 'students',     label: 'Students',       icon: <Users size={16} />,       path: ROUTES.studentManagement  },
     { key: 'analytics',    label: 'Analytics',      icon: <BarChart3 size={16} />,   path: ROUTES.analytics          },
     { key: 'alerts',       label: 'Announcements',  icon: <Megaphone size={16} />,   path: ROUTES.announcements      },

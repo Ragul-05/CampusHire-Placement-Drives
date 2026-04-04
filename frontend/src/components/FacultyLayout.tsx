@@ -10,7 +10,7 @@ import { ROUTES } from '../utils/routes';
 
 type Props = {
   children: ReactNode;
-  activeNav?: 'overview' | 'verification' | 'students' | 'drives' | 'filtering' | 'stages' | 'analytics' | 'alerts' | 'reports';
+  activeNav?: 'overview' | 'verification' | 'students' | 'drives' | 'filtering' | 'stages' | 'placementResults' | 'analytics' | 'alerts' | 'reports';
   onNavigate?: (view: any) => void;
 };
 
@@ -31,6 +31,7 @@ export default function FacultyLayout({ children, activeNav, onNavigate }: Props
     { key: 'drives',       label: 'Department Drives',    icon: <Briefcase      size={16} />, path: ROUTES.departmentDrives    },
     { key: 'filtering',    label: 'Drive Filtering',      icon: <ListChecks     size={16} />, path: ROUTES.driveFiltering      },
     { key: 'stages',       label: 'Stage Management',     icon: <Layers         size={16} />, path: ROUTES.stageManagement     },
+    { key: 'placementResults', label: 'Placement Results', icon: <BarChart3      size={16} />, path: ROUTES.facultyPlacementResults },
     { key: 'analytics',    label: 'Analytics',            icon: <BarChart3      size={16} />, path: ROUTES.analytics           },
     { key: 'alerts',       label: 'Announcements',        icon: <Megaphone      size={16} />, path: ROUTES.announcements       },
     { key: 'reports',      label: 'Activity Logs',        icon: <Shield         size={16} />, path: ROUTES.auditLogs           },

@@ -23,6 +23,7 @@ export const ROUTES = {
   shortlisting:         '/admin/shortlisting',
   driveApprovals:       '/admin/drive-approvals',
   offerManagement:      '/admin/offers',
+  adminPlacementResults: '/admin/placement-results',
   studentManagement:    '/admin/students',
   analytics:            '/admin/analytics',
   announcements:        '/admin/announcements',
@@ -33,6 +34,7 @@ export const ROUTES = {
   departmentDrives:     '/faculty/department-drives',
   driveFiltering:       '/faculty/drive-filtering',
   stageManagement:      '/faculty/stage-management',
+  facultyPlacementResults: '/faculty/placement-results',
 } as const;
 
 export type RoutePath = typeof ROUTES[keyof typeof ROUTES];

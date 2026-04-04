@@ -22,6 +22,8 @@ public interface OfferRepository extends JpaRepository<Offer, Long> {
 
     @org.springframework.data.jpa.repository.Query("SELECT c.name, COUNT(o) FROM Offer o JOIN o.drive d JOIN d.company c GROUP BY c.name ORDER BY COUNT(o) DESC")
     List<Object[]> countOffersByCompany();
+
+    List<Offer> findByStudentProfileUserDepartmentIdOrderByIssuedAtDesc(Long departmentId);
 }
 
 

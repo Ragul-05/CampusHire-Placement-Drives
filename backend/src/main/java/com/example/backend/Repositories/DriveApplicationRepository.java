@@ -3,6 +3,8 @@ package com.example.backend.Repositories;
 import com.example.backend.Models.DriveApplication;
 import com.example.backend.Models.enums.ApplicationStage;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -40,5 +42,13 @@ public interface DriveApplicationRepository extends JpaRepository<DriveApplicati
 
     java.util.List<DriveApplication> findByDriveIdAndFacultyApprovedTrue(Long driveId);
 
-        long countByDriveIdAndFacultyApprovedTrueAndSubmittedToAdminTrue(Long driveId);
+    long countByDriveIdAndFacultyApprovedTrueAndSubmittedToAdminTrue(Long driveId);
+
+    @Query("""
+            SELECT da.drive.company.name, da.stage, COUNT(da)
+            FROM DriveApplication da
+            WHERE (:departmentId IS NULL OR da.studentProfile.user.department.id = :departmentId)
+            GROUP BY da.drive.company.name, da.stage
+            """)
+    java.util.List<Object[]> countByCompanyAndStage(@Param("departmentId") Long departmentId);
 }

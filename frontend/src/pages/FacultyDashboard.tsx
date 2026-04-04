@@ -156,6 +156,11 @@ export default function FacultyDashboard({ onNavigate }: { onNavigate?: (view: a
     return () => { active = false; };
   }, [refreshKey]);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => setRefreshKey(k => k + 1), 600000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const kpis: KpiProps[] = stats ? [
     { label: 'Total Students',        value: stats.totalDepartmentStudents, icon: <GraduationCap size={22} />, growth: 5.2,   gradient: 'linear-gradient(135deg,#667eea,#764ba2)', delay: 0    },
     { label: 'Pending Verifications', value: stats.pendingVerifications,    icon: <Clock size={22} />,         growth: -12.3, gradient: 'linear-gradient(135deg,#f59e0b,#d97706)', delay: 0.07 },

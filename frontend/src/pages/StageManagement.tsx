@@ -212,7 +212,7 @@ export default function StageManagement({ onNavigate }: { onNavigate?: (view: an
 
   useEffect(() => {
     if (!selectedDriveId) return;
-    const timer = setInterval(() => setRefreshKey(k => k + 1), 10000);
+    const timer = setInterval(() => setRefreshKey(k => k + 1), 600000);
     return () => clearInterval(timer);
   }, [selectedDriveId]);
 

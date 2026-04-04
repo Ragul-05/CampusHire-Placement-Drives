@@ -365,7 +365,7 @@ export default function StudentVerification({ onNavigate }: { onNavigate?: (view
   }, [refreshKey]);
 
   useEffect(() => {
-    const intervalId = window.setInterval(() => setRefreshKey(k => k + 1), 30000);
+    const intervalId = window.setInterval(() => setRefreshKey(k => k + 1), 600000);
     return () => window.clearInterval(intervalId);
   }, []);
 

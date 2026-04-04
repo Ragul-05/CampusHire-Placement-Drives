@@ -11,7 +11,8 @@ import {
   Users,
   Briefcase,
   Award,
-  CheckCircle2
+  CheckCircle2,
+  RefreshCw
 } from 'lucide-react';
 import {
   Area,
@@ -85,6 +86,7 @@ export default function PlacementHeadDashboard({ onNavigate }: { onNavigate?: (v
   const [stats, setStats] = useState<Record<string, any>>({});
   const [analytics, setAnalytics] = useState<Record<string, any>>({});
   const [drives, setDrives] = useState<DriveRow[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -107,6 +109,11 @@ export default function PlacementHeadDashboard({ onNavigate }: { onNavigate?: (v
       }
     })();
     return () => { active = false; };
+  }, [refreshKey]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setRefreshKey((key) => key + 1), 600000);
+    return () => window.clearInterval(timer);
   }, []);
 
   const kpis: Kpi[] = useMemo(() => [
@@ -135,6 +142,11 @@ export default function PlacementHeadDashboard({ onNavigate }: { onNavigate?: (v
   return (
     <AdminLayout activeNav="overview" onNavigate={onNavigate}>
       <section className="content">
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+          <button className="btn-secondary" onClick={() => setRefreshKey((key) => key + 1)} disabled={loading}>
+            <RefreshCw size={15} style={loading ? { animation: 'spin 1s linear infinite' } : {}} /> Refresh
+          </button>
+        </div>
         {error && (
           <div className="card" style={{ padding: 16, color: '#b91c1c', fontWeight: 600 }}>
             {error}

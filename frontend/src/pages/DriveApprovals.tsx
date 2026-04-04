@@ -24,7 +24,8 @@ type ApprovedStudent = {
   id: number;
   studentId: number;
   studentName: string;
-  rollNo: string;
+  rollNo?: string;
+  rollNumber?: string;
   departmentName: string;
   cgpa: number;
   stage: string;
@@ -47,6 +48,12 @@ export default function DriveApprovals({ onNavigate }: { onNavigate?: (view: str
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [updatingStudentId, setUpdatingStudentId] = useState<number | null>(null);
+
+  function normalizeRollNo(student: ApprovedStudent): string {
+    const raw = student.rollNo ?? student.rollNumber;
+    if (typeof raw === 'string' && raw.trim()) return raw.trim();
+    return `N/A (${student.studentId})`;
+  }
 
   useEffect(() => {
     let active = true;
@@ -91,7 +98,13 @@ export default function DriveApprovals({ onNavigate }: { onNavigate?: (view: str
       try {
         setLoadingStudents(true);
         const res = await getJson<ApprovedStudent[]>(`/api/admin/approved-students/${selectedDriveId}`);
-        if (active) setStudents(res.data || []);
+        if (active) {
+          const normalized = (res.data || []).map((student) => ({
+            ...student,
+            rollNo: normalizeRollNo(student),
+          }));
+          setStudents(normalized);
+        }
       } catch (e: any) {
         if (active) setToast({ msg: e.message || 'Failed to load approved students', type: 'error' });
       } finally {
@@ -107,19 +120,12 @@ export default function DriveApprovals({ onNavigate }: { onNavigate?: (view: str
     return () => clearTimeout(timer);
   }, [toast]);
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setRefreshKey((key) => key + 1);
-    }, 10000);
-    return () => clearInterval(timer);
-  }, []);
-
   const filteredStudents = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return students;
     return students.filter((student) =>
       student.studentName.toLowerCase().includes(q) ||
-      student.rollNo.toLowerCase().includes(q) ||
+      (student.rollNo || '').toLowerCase().includes(q) ||
       student.departmentName.toLowerCase().includes(q)
     );
   }, [students, search]);
@@ -198,7 +204,7 @@ export default function DriveApprovals({ onNavigate }: { onNavigate?: (view: str
                 ],
                 rows: filteredStudents.map((student) => ({
                   studentName: student.studentName,
-                  rollNo: student.rollNo,
+                  rollNo: student.rollNo || `N/A (${student.studentId})`,
                   departmentName: student.departmentName,
                   cgpa: student.cgpa?.toFixed?.(2) ?? student.cgpa,
                   skills: (student.skills || []).join(', '),
@@ -218,36 +224,6 @@ export default function DriveApprovals({ onNavigate }: { onNavigate?: (view: str
         </div>
 
         <div className="card shortlist-controls">
-          <div className="table-header-row" style={{ marginBottom: 12 }}>
-            <div className="table-info" style={{ fontWeight: 700 }}>
-              {loadingSummaries
-                ? 'Loading drive approval cards...'
-                : `${driveSummaries.length} drive${driveSummaries.length !== 1 ? 's' : ''} available`}
-            </div>
-          </div>
-
-          {!loadingSummaries && driveSummaries.length > 0 && (
-            <div className="dd-grid" style={{ marginBottom: 16 }}>
-              {driveSummaries.map((summary) => (
-                <div key={summary.driveId} className={`dd-card fade-in ${selectedDriveId === summary.driveId ? 'drive-card selected' : ''}`}>
-                  <div className="dd-card-body" style={{ gap: 6 }}>
-                    <h3 className="dd-drive-title" style={{ marginBottom: 0 }}>{summary.driveTitle}</h3>
-                    <p className="dd-company-name" style={{ marginBottom: 8 }}>{summary.companyName}</p>
-                    <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>
-                      Total Approved Students
-                    </div>
-                    <div style={{ fontSize: 28, fontWeight: 800, color: '#0f172a', lineHeight: 1.1 }}>
-                      {summary.totalApprovedStudents}
-                    </div>
-                  </div>
-                  <button className="btn-secondary" onClick={() => setSelectedDriveId(summary.driveId)}>
-                    View Students
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
           <div className="shortlist-header">
             <div style={{ flex: 1 }}>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--text-muted)' }}>
@@ -285,6 +261,36 @@ export default function DriveApprovals({ onNavigate }: { onNavigate?: (view: str
               {search && <button className="sv-search-clear" onClick={() => setSearch('')}><X size={12} /></button>}
             </div>
           </div>
+
+          <div className="table-header-row" style={{ marginBottom: 12 }}>
+            <div className="table-info" style={{ fontWeight: 700 }}>
+              {loadingSummaries
+                ? 'Loading drive approval cards...'
+                : `${driveSummaries.length} drive${driveSummaries.length !== 1 ? 's' : ''} available`}
+            </div>
+          </div>
+
+          {!loadingSummaries && driveSummaries.length > 0 && (
+            <div className="dd-grid" style={{ marginBottom: 16 }}>
+              {driveSummaries.map((summary) => (
+                <div key={summary.driveId} className={`dd-card fade-in ${selectedDriveId === summary.driveId ? 'drive-card selected' : ''}`}>
+                  <div className="dd-card-body" style={{ gap: 6 }}>
+                    <h3 className="dd-drive-title" style={{ marginBottom: 0 }}>{summary.driveTitle}</h3>
+                    <p className="dd-company-name" style={{ marginBottom: 8 }}>{summary.companyName}</p>
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>
+                      Total Approved Students
+                    </div>
+                    <div style={{ fontSize: 28, fontWeight: 800, color: '#0f172a', lineHeight: 1.1 }}>
+                      {summary.totalApprovedStudents}
+                    </div>
+                  </div>
+                  <button className="btn-secondary" onClick={() => setSelectedDriveId(summary.driveId)}>
+                    View Students
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {selectedDriveId && (
@@ -320,7 +326,7 @@ export default function DriveApprovals({ onNavigate }: { onNavigate?: (view: str
                     <tr key={student.id}>
                       <td>
                         <div style={{ fontWeight: 600 }}>{student.studentName}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{student.rollNo}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{student.rollNo || `N/A (${student.studentId})`}</div>
                       </td>
                       <td>{student.departmentName}</td>
                       <td><span className="cgpa-badge">{student.cgpa?.toFixed?.(2) ?? student.cgpa}</span></td>

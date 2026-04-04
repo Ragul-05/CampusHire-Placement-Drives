@@ -89,16 +89,6 @@ export default function OfferManagement({ onNavigate }: { onNavigate?: (view: an
   }, [selectedDriveId]);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      if (selectedDriveId > 0) {
-        loadOffers();
-      }
-      loadAllOffers();
-    }, 10000);
-    return () => clearInterval(timer);
-  }, [selectedDriveId]);
-
-  useEffect(() => {
     calculateStats();
   }, [offers]);
 

@@ -1,6 +1,7 @@
 package com.example.backend.Services;
 
 import com.example.backend.DTOs.Admin.DriveApplicationDTO;
+import com.example.backend.DTOs.Admin.DriveApprovalSummaryDTO;
 import com.example.backend.DTOs.Admin.AdminStageUpdateRequestDTO;
 import com.example.backend.DTOs.Admin.ShortlistRequestDTO;
 import com.example.backend.Exceptions.ResourceNotFoundException;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -49,10 +51,27 @@ public class AdminShortlistService {
 
         List<DriveApplication> applications = driveApplicationRepository.findByDriveId(driveId).stream()
                 .filter(app -> Boolean.TRUE.equals(app.getFacultyApproved()))
-                .filter(app -> Boolean.TRUE.equals(app.getSubmittedToAdmin()) || app.getStage() == ApplicationStage.SELECTED)
+                .filter(app -> Boolean.TRUE.equals(app.getSubmittedToAdmin()))
                 .filter(app -> app.getStage() != ApplicationStage.REJECTED)
                 .collect(Collectors.toList());
         return applications.stream().map(this::mapToDTO).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<DriveApprovalSummaryDTO> getDriveApprovalSummary() {
+        var drives = placementDriveRepository.findAll();
+        if (drives.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        return drives.stream().map(drive -> DriveApprovalSummaryDTO.builder()
+                .driveId(drive.getId())
+                .driveTitle(drive.getTitle())
+                .companyName(drive.getCompany() != null ? drive.getCompany().getName() : "N/A")
+                .totalApprovedStudents(driveApplicationRepository
+                        .countByDriveIdAndFacultyApprovedTrueAndSubmittedToAdminTrue(drive.getId()))
+                .build())
+                .collect(Collectors.toList());
     }
 
     public List<DriveApplicationDTO> getFacultyApprovedApplicants(Long driveId) {

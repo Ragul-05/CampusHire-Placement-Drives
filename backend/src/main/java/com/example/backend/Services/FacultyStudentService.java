@@ -165,6 +165,7 @@ public class FacultyStudentService {
             }
 
             application.setFacultyApproved(true);
+            application.setSubmittedToAdmin(true);
             application.setLastUpdatedAt(LocalDateTime.now());
             application.setLastUpdatedBy(faculty);
             student.setEligibleForAdminReview(true);

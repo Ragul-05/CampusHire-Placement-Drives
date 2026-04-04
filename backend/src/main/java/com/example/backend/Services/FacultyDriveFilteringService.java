@@ -131,6 +131,9 @@ public class FacultyDriveFilteringService {
                 .orElseThrow(() -> new IllegalArgumentException("Eligible student mapping was not found for this drive."));
 
         application.setFacultyApproved(approved);
+        if (!approved) {
+            application.setSubmittedToAdmin(false);
+        }
         application.setLastUpdatedAt(LocalDateTime.now());
         application.setLastUpdatedBy(faculty);
         driveApplicationRepository.save(application);
@@ -155,9 +158,16 @@ public class FacultyDriveFilteringService {
         StudentProfile student = studentProfileRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
 
-        ApplicationStage targetStage = ApplicationStage.valueOf(stage);
-        if (actor.getRole() == Role.FACULTY && targetStage == ApplicationStage.SELECTED) {
-            throw new UnauthorizedActionException("Faculty cannot mark students as SELECTED. Only Placement Head can do this.");
+        ApplicationStage targetStage;
+        try {
+            targetStage = ApplicationStage.valueOf(stage.toUpperCase());
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("Invalid stage value: " + stage);
+        }
+
+        if (actor.getRole() == Role.FACULTY &&
+                (targetStage == ApplicationStage.SELECTED || targetStage == ApplicationStage.REJECTED)) {
+            throw new UnauthorizedActionException("Faculty can update only up to HR stage. Only Placement Head can set final outcomes.");
         }
 
         PlacementDrive drive = placementDriveRepository.findById(driveId)

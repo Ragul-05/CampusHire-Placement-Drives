@@ -96,14 +96,36 @@ public class AdminFinalPlacementService {
                 .collect(Collectors.toList());
     }
 
+    public List<OfferResponseDTO> getAllOffers() {
+        return offerRepository.findAllByOrderByIssuedAtDesc().stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+    }
+
     private OfferResponseDTO mapToDTO(Offer offer) {
+        String studentName = offer.getStudentProfile().getUser() != null
+            ? offer.getStudentProfile().getUser().getEmail()
+            : "N/A";
+        if (offer.getStudentProfile().getPersonalDetails() != null
+            && offer.getStudentProfile().getPersonalDetails().getFirstName() != null
+            && !offer.getStudentProfile().getPersonalDetails().getFirstName().isBlank()) {
+            String firstName = offer.getStudentProfile().getPersonalDetails().getFirstName().trim();
+            String lastName = offer.getStudentProfile().getPersonalDetails().getLastName() != null
+                ? offer.getStudentProfile().getPersonalDetails().getLastName().trim()
+                : "";
+            studentName = (firstName + " " + lastName).trim();
+        }
+
         return OfferResponseDTO.builder()
                 .id(offer.getId())
                 .studentId(offer.getStudentProfile().getId())
+            .studentName(studentName)
                 .studentEmail(
                         offer.getStudentProfile().getUser() != null ? offer.getStudentProfile().getUser().getEmail()
                                 : "N/A")
                 .driveId(offer.getDrive().getId())
+            .driveTitle(offer.getDrive().getTitle())
+            .companyName(offer.getDrive().getCompany() != null ? offer.getDrive().getCompany().getName() : "N/A")
                 .ctc(offer.getCtc())
                 .role(offer.getRole())
                 .issuedAt(offer.getIssuedAt())

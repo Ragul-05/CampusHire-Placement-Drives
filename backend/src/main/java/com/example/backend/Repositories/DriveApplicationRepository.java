@@ -39,4 +39,6 @@ public interface DriveApplicationRepository extends JpaRepository<DriveApplicati
     java.util.List<DriveApplication> findByDriveIdAndStudentProfileIdIn(Long driveId, java.util.List<Long> studentIds);
 
     java.util.List<DriveApplication> findByDriveIdAndFacultyApprovedTrue(Long driveId);
+
+        long countByDriveIdAndFacultyApprovedTrueAndSubmittedToAdminTrue(Long driveId);
 }

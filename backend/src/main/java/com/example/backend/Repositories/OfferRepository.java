@@ -7,10 +7,15 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface OfferRepository extends JpaRepository<Offer, Long> {
     List<Offer> findByDriveId(Long driveId);
+
+    Optional<Offer> findByDriveIdAndStudentProfileId(Long driveId, Long studentId);
+
+    List<Offer> findAllByOrderByIssuedAtDesc();
 
     @Query("SELECT o FROM Offer o LEFT JOIN FETCH o.drive d LEFT JOIN FETCH d.company WHERE o.studentProfile.id = :studentId")
     List<Offer> findByStudentProfileId(@Param("studentId") Long studentId);

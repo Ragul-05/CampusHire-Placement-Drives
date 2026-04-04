@@ -26,6 +26,16 @@ public class AdminAuditService {
         return logs.stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
+    public List<AuditLogDTO> getFacultyAuditLogs(String facultyEmail, String query) {
+        List<AuditLog> logs;
+        if (query != null && !query.trim().isEmpty()) {
+            logs = auditLogRepository.findFacultyAuditLogsByQuery(facultyEmail, query);
+        } else {
+            logs = auditLogRepository.findByActorEmailOrderByTimestampDesc(facultyEmail);
+        }
+        return logs.stream().map(this::mapToDTO).collect(Collectors.toList());
+    }
+
     private AuditLogDTO mapToDTO(AuditLog log) {
         return AuditLogDTO.builder()
                 .id(log.getId())

@@ -8,6 +8,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import html2canvas from 'html2canvas';
 
 /* ─────────────────────────────────────────
    Types
@@ -25,6 +26,7 @@ export interface ExportOptions {
   filename: string;       // without extension
   columns: ExportColumn[];
   rows: ExportRow[];
+  includePageSnapshot?: boolean;
 }
 
 /* ─────────────────────────────────────────
@@ -40,10 +42,11 @@ const DANGER    = [239,  68,  68] as [number, number, number];  // #ef4444
 /* ─────────────────────────────────────────
    PDF EXPORT
 ───────────────────────────────────────── */
-export function exportToPDF(opts: ExportOptions): void {
+export async function exportToPDF(opts: ExportOptions, sourceElement?: HTMLElement | null): Promise<void> {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
 
   const pageW  = doc.internal.pageSize.getWidth();
+  const pageH  = doc.internal.pageSize.getHeight();
   const now    = new Date().toLocaleString('en-IN');
 
   /* ── Header banner ── */
@@ -67,9 +70,74 @@ export function exportToPDF(opts: ExportOptions): void {
   if (opts.subtitle) doc.text(opts.subtitle, 36, 64);
   doc.text(`Generated: ${now}  ·  Records: ${opts.rows.length}`, pageW - 36, 64, { align: 'right' });
 
+  /* ── Optional page snapshot (charts + current view) ── */
+  const shouldCapture = opts.includePageSnapshot !== false;
+  if (shouldCapture && sourceElement) {
+    doc.setTextColor(...TEXT_DARK);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Visual Snapshot', 36, 92);
+
+    const canvas = await html2canvas(sourceElement, {
+      useCORS: true,
+      backgroundColor: '#f8fafc',
+      scale: 2,
+      logging: false,
+    });
+
+    const targetWidth = pageW - 72;
+    const headerAndFooter = 120;
+    const availableHeight = pageH - headerAndFooter;
+    const pxPerPt = canvas.width / targetWidth;
+    const pageSlicePx = Math.floor(availableHeight * pxPerPt);
+
+    let offsetY = 0;
+    let isFirstSlice = true;
+
+    while (offsetY < canvas.height) {
+      const sliceHeightPx = Math.min(pageSlicePx, canvas.height - offsetY);
+      const sliceCanvas = document.createElement('canvas');
+      sliceCanvas.width = canvas.width;
+      sliceCanvas.height = sliceHeightPx;
+
+      const sliceCtx = sliceCanvas.getContext('2d');
+      if (!sliceCtx) break;
+
+      sliceCtx.drawImage(
+        canvas,
+        0,
+        offsetY,
+        canvas.width,
+        sliceHeightPx,
+        0,
+        0,
+        canvas.width,
+        sliceHeightPx
+      );
+
+      if (!isFirstSlice) {
+        doc.addPage();
+      }
+
+      const sliceHeightPt = sliceHeightPx / pxPerPt;
+      const imageY = isFirstSlice ? 102 : 72;
+      doc.addImage(sliceCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', 36, imageY, targetWidth, sliceHeightPt, undefined, 'FAST');
+
+      offsetY += sliceHeightPx;
+      isFirstSlice = false;
+    }
+
+    doc.addPage();
+  }
+
+  doc.setTextColor(...TEXT_DARK);
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Tabular Data', 36, 92);
+
   /* ── Auto-table ── */
   autoTable(doc, {
-    startY: 78,
+    startY: 102,
     head:   [opts.columns.map(c => c.header)],
     body:   opts.rows.map(row => opts.columns.map(c => {
       const v = row[c.key];
@@ -173,7 +241,12 @@ export function exportToExcel(opts: ExportOptions): void {
 ───────────────────────────────────────── */
 export type ExportFormat = 'pdf' | 'xlsx';
 
-export function runExport(format: ExportFormat, opts: ExportOptions): void {
-  if (format === 'pdf')  exportToPDF(opts);
-  if (format === 'xlsx') exportToExcel(opts);
+export async function runExport(format: ExportFormat, opts: ExportOptions, sourceElement?: HTMLElement | null): Promise<void> {
+  if (format === 'pdf') {
+    await exportToPDF(opts, sourceElement);
+    return;
+  }
+  if (format === 'xlsx') {
+    exportToExcel(opts);
+  }
 }

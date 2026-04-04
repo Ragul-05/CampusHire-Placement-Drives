@@ -48,10 +48,15 @@ public class AdminStudentService {
     }
 
     private AdminStudentProfileDTO mapToDTO(StudentProfile profile) {
+        String rollNo = profile.getRollNo();
+        if (rollNo == null || rollNo.isBlank()) {
+            rollNo = profile.getUser() != null ? profile.getUser().getUniversityRegNo() : null;
+        }
+
         return AdminStudentProfileDTO.builder()
                 .id(profile.getId())
                 .email(profile.getUser() != null ? profile.getUser().getEmail() : null)
-                .rollNo(profile.getRollNo())
+            .rollNo(rollNo)
                 .batch(profile.getBatch())
                 .departmentName((profile.getUser() != null && profile.getUser().getDepartment() != null)
                         ? profile.getUser().getDepartment().getName()

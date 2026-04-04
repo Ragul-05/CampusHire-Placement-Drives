@@ -144,11 +144,18 @@ public class AdminShortlistService {
             studentName = (firstName + " " + lastName).trim();
         }
 
+        String rollNo = app.getStudentProfile().getRollNo();
+        if (rollNo == null || rollNo.isBlank()) {
+            rollNo = app.getStudentProfile().getUser() != null
+                    ? app.getStudentProfile().getUser().getUniversityRegNo()
+                    : null;
+        }
+
         return DriveApplicationDTO.builder()
                 .id(app.getId())
                 .studentId(app.getStudentProfile().getId())
                 .studentName(studentName)
-                .rollNo(app.getStudentProfile().getRollNo())
+                .rollNo(rollNo)
                 .departmentName(app.getStudentProfile().getUser().getDepartment() != null
                         ? app.getStudentProfile().getUser().getDepartment().getName()
                         : "N/A")

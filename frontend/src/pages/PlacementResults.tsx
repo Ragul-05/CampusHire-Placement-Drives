@@ -523,7 +523,7 @@ export default function PlacementResults({ onNavigate }: { onNavigate?: (view: s
               className="btn-secondary"
               onClick={() => runExport('xlsx', {
                 title: 'Placement Results',
-                subtitle: isFaculty ? 'Faculty Department Scope' : 'Admin Full Scope',
+                subtitle: 'Platform-wide Placement Scope',
                 filename: isFaculty ? 'faculty-placement-results' : 'admin-placement-results',
                 columns: [
                   { header: 'Section', key: 'section' },

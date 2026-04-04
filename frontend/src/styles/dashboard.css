@@ -398,6 +398,8 @@
 
 .table-wrapper {
   overflow-x: auto;
+  overflow-y: visible;
+  position: relative;
 }
 
 .table {
@@ -469,6 +471,37 @@
 
 .badge.danger {
   background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+}
+
+/* Stage color coding */
+.badge.stage-eligible {
+  background: rgba(100, 116, 139, 0.18);
+  color: #475569;
+}
+
+.badge.stage-assessment {
+  background: rgba(59, 130, 246, 0.14);
+  color: #1d4ed8;
+}
+
+.badge.stage-technical {
+  background: rgba(245, 158, 11, 0.18);
+  color: #b45309;
+}
+
+.badge.stage-hr {
+  background: rgba(124, 58, 237, 0.16);
+  color: #6d28d9;
+}
+
+.badge.stage-selected {
+  background: rgba(16, 185, 129, 0.16);
+  color: #047857;
+}
+
+.badge.stage-rejected {
+  background: rgba(239, 68, 68, 0.14);
   color: #b91c1c;
 }
 
@@ -928,16 +961,16 @@
 .status-options {
   position: absolute;
   right: 0;
-  bottom: calc(100% + 8px);
+  top: calc(100% + 8px);
+  bottom: auto;
   display: none;
   flex-direction: column;
   overflow: hidden;
-  right: 0;
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-  z-index: 50;
+  z-index: 120;
   min-width: 120px;
   margin-top: 4px;
   animation: slideDown 0.2s ease;
@@ -948,7 +981,7 @@
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-5px); }
+  from { opacity: 0; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -3818,6 +3851,82 @@
   font-weight: 500;
 }
 
+/* Placement Results */
+.pr-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.pr-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-top: 3px solid #2563eb;
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  box-shadow: var(--shadow-sm);
+}
+
+.pr-card-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pr-card-title {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.pr-card-value {
+  font-size: 24px;
+  line-height: 1;
+  color: var(--text-primary);
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.pr-card-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.pr-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 14px;
+}
+
+.pr-chart-card {
+  min-height: 380px;
+  display: flex;
+  flex-direction: column;
+}
+
+.pr-chart-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 4px;
+}
+
+.pr-section-title {
+  margin: 0 0 10px;
+  font-size: 15px;
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
 /* Responsive Breakpoints */
 @media (max-width: 1280px) {
   .grid-4 {
@@ -3827,11 +3936,23 @@
   .grid-3 {
     grid-template-columns: repeat(2, 1fr);
   }
+
+  .pr-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pr-charts-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 768px) {
   .grid-4,
   .grid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .pr-grid {
     grid-template-columns: 1fr;
   }
 
@@ -4335,6 +4456,36 @@ button:focus-visible,
   outline: none;
   border-color: var(--accent-1);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.stage-select-eligible {
+  background: rgba(100, 116, 139, 0.1);
+  color: #475569;
+}
+
+.stage-select-assessment {
+  background: rgba(59, 130, 246, 0.1);
+  color: #1d4ed8;
+}
+
+.stage-select-technical {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+}
+
+.stage-select-hr {
+  background: rgba(124, 58, 237, 0.1);
+  color: #6d28d9;
+}
+
+.stage-select-selected {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+.stage-select-rejected {
+  background: rgba(239, 68, 68, 0.1);
+  color: #b91c1c;
 }
 
 /* Responsive Drive Filtering */

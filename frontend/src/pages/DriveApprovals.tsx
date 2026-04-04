@@ -3,6 +3,7 @@ import { CheckCircle2, ChevronLeft, RefreshCw, Search, X } from 'lucide-react';
 import AdminLayout from '../components/AdminLayout';
 import ExportButton from '../components/ExportButton';
 import { getJson, putJson } from '../utils/api';
+import StageDropdown from '../components/StageDropdown';
 
 type Drive = {
   id: number;
@@ -10,6 +11,13 @@ type Drive = {
   companyName: string;
   role?: string;
   status: string;
+};
+
+type DriveApprovalSummary = {
+  driveId: number;
+  driveTitle: string;
+  companyName: string;
+  totalApprovedStudents: number;
 };
 
 type ApprovedStudent = {
@@ -29,9 +37,11 @@ type ApprovedStudent = {
 
 export default function DriveApprovals({ onNavigate }: { onNavigate?: (view: string) => void }) {
   const [drives, setDrives] = useState<Drive[]>([]);
+  const [driveSummaries, setDriveSummaries] = useState<DriveApprovalSummary[]>([]);
   const [selectedDriveId, setSelectedDriveId] = useState<number | ''>('');
   const [students, setStudents] = useState<ApprovedStudent[]>([]);
   const [loadingDrives, setLoadingDrives] = useState(true);
+  const [loadingSummaries, setLoadingSummaries] = useState(true);
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [search, setSearch] = useState('');
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
@@ -49,6 +59,22 @@ export default function DriveApprovals({ onNavigate }: { onNavigate?: (view: str
         if (active) setToast({ msg: e.message || 'Failed to load drives', type: 'error' });
       } finally {
         if (active) setLoadingDrives(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [refreshKey]);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        setLoadingSummaries(true);
+        const res = await getJson<DriveApprovalSummary[]>('/api/admin/drive-approvals/summary');
+        if (active) setDriveSummaries(res.data || []);
+      } catch (e: any) {
+        if (active) setToast({ msg: e.message || 'Failed to load approval summary', type: 'error' });
+      } finally {
+        if (active) setLoadingSummaries(false);
       }
     })();
     return () => { active = false; };
@@ -81,6 +107,13 @@ export default function DriveApprovals({ onNavigate }: { onNavigate?: (view: str
     return () => clearTimeout(timer);
   }, [toast]);
 
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setRefreshKey((key) => key + 1);
+    }, 10000);
+    return () => clearInterval(timer);
+  }, []);
+
   const filteredStudents = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return students;
@@ -91,25 +124,39 @@ export default function DriveApprovals({ onNavigate }: { onNavigate?: (view: str
     );
   }, [students, search]);
 
-  const selectedDrive = drives.find((drive) => drive.id === selectedDriveId);
+  const selectedDrive = drives.find((drive) => drive.id === selectedDriveId) ||
+    (selectedDriveId
+      ? (() => {
+          const summary = driveSummaries.find((entry) => entry.driveId === selectedDriveId);
+          return summary
+            ? {
+                id: summary.driveId,
+                title: summary.driveTitle,
+                companyName: summary.companyName,
+                role: '',
+                status: 'ACTIVE',
+              }
+            : undefined;
+        })()
+      : undefined);
 
-  async function markSelected(studentId: number) {
+  async function updateStage(studentId: number, stage: string) {
     if (!selectedDriveId) return;
     try {
       setUpdatingStudentId(studentId);
-      const res = await putJson<ApprovedStudent>('/api/admin/update-stage', {
+      const adminEmail = localStorage.getItem('email') || 'admin@campushire.com';
+      await putJson<void>(`/api/stage/update?email=${encodeURIComponent(adminEmail)}`, {
         studentId,
         driveId: selectedDriveId,
-        stage: 'SELECTED',
+        stage,
       });
-      const updated = res.data;
       setStudents((current) =>
         current.map((student) => student.studentId === studentId
-          ? { ...student, stage: updated?.stage ?? 'SELECTED', submittedToAdmin: true }
+          ? { ...student, stage, submittedToAdmin: true }
           : student
         )
       );
-      setToast({ msg: 'Student marked as SELECTED', type: 'success' });
+      setToast({ msg: 'Stage updated successfully', type: 'success' });
     } catch (e: any) {
       setToast({ msg: e.message || 'Failed to update student stage', type: 'error' });
     } finally {
@@ -171,6 +218,36 @@ export default function DriveApprovals({ onNavigate }: { onNavigate?: (view: str
         </div>
 
         <div className="card shortlist-controls">
+          <div className="table-header-row" style={{ marginBottom: 12 }}>
+            <div className="table-info" style={{ fontWeight: 700 }}>
+              {loadingSummaries
+                ? 'Loading drive approval cards...'
+                : `${driveSummaries.length} drive${driveSummaries.length !== 1 ? 's' : ''} available`}
+            </div>
+          </div>
+
+          {!loadingSummaries && driveSummaries.length > 0 && (
+            <div className="dd-grid" style={{ marginBottom: 16 }}>
+              {driveSummaries.map((summary) => (
+                <div key={summary.driveId} className={`dd-card fade-in ${selectedDriveId === summary.driveId ? 'drive-card selected' : ''}`}>
+                  <div className="dd-card-body" style={{ gap: 6 }}>
+                    <h3 className="dd-drive-title" style={{ marginBottom: 0 }}>{summary.driveTitle}</h3>
+                    <p className="dd-company-name" style={{ marginBottom: 8 }}>{summary.companyName}</p>
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>
+                      Total Approved Students
+                    </div>
+                    <div style={{ fontSize: 28, fontWeight: 800, color: '#0f172a', lineHeight: 1.1 }}>
+                      {summary.totalApprovedStudents}
+                    </div>
+                  </div>
+                  <button className="btn-secondary" onClick={() => setSelectedDriveId(summary.driveId)}>
+                    View Students
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="shortlist-header">
             <div style={{ flex: 1 }}>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: 'var(--text-muted)' }}>
@@ -185,7 +262,12 @@ export default function DriveApprovals({ onNavigate }: { onNavigate?: (view: str
                   className="drive-select"
                 >
                   <option value="">-- Select a Drive --</option>
-                  {drives.map((drive) => (
+                  {driveSummaries.map((drive) => (
+                    <option key={drive.driveId} value={drive.driveId}>
+                      {drive.driveTitle} - {drive.companyName} ({drive.totalApprovedStudents} approved)
+                    </option>
+                  ))}
+                  {driveSummaries.length === 0 && drives.map((drive) => (
                     <option key={drive.id} value={drive.id}>
                       {drive.title} - {drive.companyName} ({drive.status})
                     </option>
@@ -223,7 +305,7 @@ export default function DriveApprovals({ onNavigate }: { onNavigate?: (view: str
                     <th>Skills</th>
                     <th>Stage</th>
                     <th>Approval Status</th>
-                    <th>Final Stage</th>
+                    <th>Stage Control</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -250,18 +332,15 @@ export default function DriveApprovals({ onNavigate }: { onNavigate?: (view: str
                         </span>
                       </td>
                       <td>
-                        {student.stage === 'SELECTED' ? (
-                          <span className="badge success">SELECTED</span>
-                        ) : (
-                          <button
-                            className="btn-primary"
-                            style={{ padding: '8px 12px', fontSize: 12 }}
-                            disabled={updatingStudentId === student.studentId}
-                            onClick={() => markSelected(student.studentId)}
-                          >
-                            {updatingStudentId === student.studentId ? 'Updating…' : 'Mark Selected'}
-                          </button>
-                        )}
+                        <StageDropdown
+                          value={student.stage}
+                          className="sm-stage-select-unified"
+                          disabled={updatingStudentId === student.studentId}
+                          onChange={(next) => {
+                            if (next === student.stage) return;
+                            updateStage(student.studentId, next);
+                          }}
+                        />
                       </td>
                     </tr>
                   ))}

@@ -14,8 +14,11 @@ type Drive = {
 type Offer = {
   id: number;
   studentId: number;
+  studentName?: string;
   studentEmail: string;
   driveId: number;
+  driveTitle?: string;
+  companyName?: string;
   ctc: number;
   role: string;
   issuedAt: string;
@@ -50,6 +53,7 @@ export default function OfferManagement({ onNavigate }: { onNavigate?: (view: an
   const [drives, setDrives] = useState<Drive[]>([]);
   const [selectedDriveId, setSelectedDriveId] = useState<number>(0);
   const [offers, setOffers] = useState<Offer[]>([]);
+  const [allOffers, setAllOffers] = useState<Offer[]>([]);
   const [applicants, setApplicants] = useState<Applicant[]>([]);
 
   const [loading, setLoading] = useState(true);
@@ -85,6 +89,16 @@ export default function OfferManagement({ onNavigate }: { onNavigate?: (view: an
   }, [selectedDriveId]);
 
   useEffect(() => {
+    const timer = setInterval(() => {
+      if (selectedDriveId > 0) {
+        loadOffers();
+      }
+      loadAllOffers();
+    }, 10000);
+    return () => clearInterval(timer);
+  }, [selectedDriveId]);
+
+  useEffect(() => {
     calculateStats();
   }, [offers]);
 
@@ -93,10 +107,20 @@ export default function OfferManagement({ onNavigate }: { onNavigate?: (view: an
       setLoading(true);
       const drivesRes = await getJson<Drive[]>('/api/admin/drives');
       setDrives(drivesRes.data || []);
+      await loadAllOffers();
     } catch (err: any) {
       showToast(err?.message || 'Failed to load data', true);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadAllOffers() {
+    try {
+      const response = await getJson<Offer[]>('/api/admin/offers');
+      setAllOffers(response.data || []);
+    } catch {
+      // Keep current UI data if summary refresh fails.
     }
   }
 
@@ -163,6 +187,7 @@ export default function OfferManagement({ onNavigate }: { onNavigate?: (view: an
       showToast('Offer recorded successfully');
       closeModal();
       loadOffers();
+      loadAllOffers();
     } catch (err: any) {
       showToast(err?.message || 'Failed to record offer', true);
     } finally {
@@ -188,6 +213,12 @@ export default function OfferManagement({ onNavigate }: { onNavigate?: (view: an
 
   // Filter applicants: only show those who haven't received offers yet
   const availableStudents = applicants.filter(app => !studentsWithOffers.has(app.studentId));
+
+  const companyOfferCounts = allOffers.reduce<Record<string, number>>((acc, offer) => {
+    const company = offer.companyName || 'Unknown';
+    acc[company] = (acc[company] || 0) + 1;
+    return acc;
+  }, {});
 
   return (
     <AdminLayout activeNav="offers" onNavigate={onNavigate}>
@@ -277,6 +308,28 @@ export default function OfferManagement({ onNavigate }: { onNavigate?: (view: an
                     <div className="stat-label">Locked Profiles</div>
                     <div className="stat-value">{stats.lockedProfiles}</div>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Company-wise Offer Summary */}
+            {allOffers.length > 0 && (
+              <div className="card" style={{ padding: '18px 20px', marginBottom: '20px' }}>
+                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, color: 'var(--text-primary)' }}>
+                  Company-wise Offers
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+                  {Object.entries(companyOfferCounts).map(([company, count]) => (
+                    <div key={company} style={{
+                      border: '1px solid var(--border)',
+                      borderRadius: 10,
+                      padding: '10px 12px',
+                      background: '#f8fafc'
+                    }}>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>{company}</div>
+                      <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)' }}>{count}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

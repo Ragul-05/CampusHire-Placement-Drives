@@ -112,7 +112,11 @@ export default function StudentManagement({ onNavigate }: { onNavigate?: (view: 
           getJson<Student[]>('/api/admin/students/search?query='),
           getJson<Department[]>('/api/admin/departments')
         ]);
-        setStudents(studentsRes.data || []);
+        const normalizedStudents = (studentsRes.data || []).map((student) => ({
+          ...student,
+          rollNo: student.rollNo && student.rollNo.trim() ? student.rollNo : 'N/A',
+        }));
+        setStudents(normalizedStudents);
         setDepartments(deptsRes.data || []);
       }
     } catch (err: any) {
@@ -129,7 +133,7 @@ export default function StudentManagement({ onNavigate }: { onNavigate?: (view: 
     if (searchTerm) {
       filtered = filtered.filter(student =>
         student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.rollNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (student.rollNo || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (student.name || '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }

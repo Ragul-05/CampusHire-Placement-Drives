@@ -13,6 +13,7 @@ function toLabel(stage: string): string {
   if (stage === 'TECHNICAL') return 'Technical';
   if (stage === 'HR') return 'HR Round';
   if (stage === 'ELIGIBLE') return 'Eligible';
+  if (stage === 'REJECTED') return 'Rejected';
   return 'Selected';
 }
 

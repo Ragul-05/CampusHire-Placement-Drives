@@ -52,7 +52,7 @@ export default function DriveApprovals({ onNavigate }: { onNavigate?: (view: str
   function normalizeRollNo(student: ApprovedStudent): string {
     const raw = student.rollNo ?? student.rollNumber;
     if (typeof raw === 'string' && raw.trim()) return raw.trim();
-    return `N/A (${student.studentId})`;
+    return 'N/A';
   }
 
   useEffect(() => {
@@ -204,7 +204,7 @@ export default function DriveApprovals({ onNavigate }: { onNavigate?: (view: str
                 ],
                 rows: filteredStudents.map((student) => ({
                   studentName: student.studentName,
-                  rollNo: student.rollNo || `N/A (${student.studentId})`,
+                  rollNo: student.rollNo || 'N/A',
                   departmentName: student.departmentName,
                   cgpa: student.cgpa?.toFixed?.(2) ?? student.cgpa,
                   skills: (student.skills || []).join(', '),
@@ -326,7 +326,7 @@ export default function DriveApprovals({ onNavigate }: { onNavigate?: (view: str
                     <tr key={student.id}>
                       <td>
                         <div style={{ fontWeight: 600 }}>{student.studentName}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{student.rollNo || `N/A (${student.studentId})`}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{student.rollNo || 'N/A'}</div>
                       </td>
                       <td>{student.departmentName}</td>
                       <td><span className="cgpa-badge">{student.cgpa?.toFixed?.(2) ?? student.cgpa}</span></td>

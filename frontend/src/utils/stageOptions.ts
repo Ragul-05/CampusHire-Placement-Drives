@@ -4,6 +4,7 @@ export const PLACEMENT_STAGE_OPTIONS = [
   'TECHNICAL',
   'HR',
   'SELECTED',
+  'REJECTED',
 ] as const;
 
 export type PlacementStageOption = (typeof PLACEMENT_STAGE_OPTIONS)[number];

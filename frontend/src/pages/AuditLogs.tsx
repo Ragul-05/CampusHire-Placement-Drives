@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Search, Download, ChevronDown, ChevronUp, Shield } from 'lucide-react';
 import '../styles/dashboard.css';
-import { getJson } from '../utils/api';
+import { facultyUrl, getJson } from '../utils/api';
 import AdminLayout from '../components/AdminLayout';
 import FacultyLayout from '../components/FacultyLayout';
 
@@ -11,6 +11,19 @@ type AuditLog = {
   userEmail: string;
   targetEntity: string;
   targetId: number;
+  ipAddress: string;
+  timestamp: string;
+  details?: string;
+};
+
+type AuditLogApi = {
+  id: number;
+  action: string;
+  adminEmail?: string;
+  userEmail?: string;
+  targetEntity: string;
+  targetEntityId?: string;
+  targetId?: number;
   ipAddress: string;
   timestamp: string;
   details?: string;
@@ -39,8 +52,22 @@ export default function AuditLogs({ onNavigate }: { onNavigate?: (view: any) => 
   async function loadLogs() {
     try {
       setLoading(true);
-      const response = await getJson<AuditLog[]>('/api/admin/audit?query=');
-      setLogs(response.data || []);
+      const userRole = localStorage.getItem('role');
+      const endpoint = userRole === 'FACULTY'
+        ? facultyUrl('/api/faculty/audit')
+        : '/api/admin/audit';
+      const response = await getJson<AuditLogApi[]>(`${endpoint}${endpoint.includes('?') ? '&' : '?'}query=`);
+      const normalized = (response.data || []).map((log) => ({
+        id: log.id,
+        action: log.action,
+        userEmail: log.userEmail || log.adminEmail || 'System',
+        targetEntity: log.targetEntity,
+        targetId: log.targetId ?? Number(log.targetEntityId || 0),
+        ipAddress: log.ipAddress,
+        timestamp: log.timestamp,
+        details: log.details,
+      }));
+      setLogs(normalized);
     } catch (err: any) {
       console.error('Failed to load audit logs', err);
     } finally {

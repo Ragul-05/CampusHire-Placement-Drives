@@ -9,8 +9,11 @@ import java.time.LocalDateTime;
 public class OfferResponseDTO {
     private Long id;
     private Long studentId;
+    private String studentName;
     private String studentEmail;
     private Long driveId;
+    private String driveTitle;
+    private String companyName;
     private Double ctc;
     private String role;
     private LocalDateTime issuedAt;

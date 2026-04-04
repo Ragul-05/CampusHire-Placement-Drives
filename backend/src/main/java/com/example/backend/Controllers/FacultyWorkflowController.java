@@ -1,6 +1,8 @@
 package com.example.backend.Controllers;
 
 import com.example.backend.DTOs.Faculty.ProfileVerificationRequestDTO;
+import com.example.backend.DTOs.Faculty.FacultyStageUpdateRequestDTO;
+import com.example.backend.Services.FacultyDriveFilteringService;
 import com.example.backend.Services.FacultyStudentService;
 import com.example.backend.Utils.ApiResponse;
 import jakarta.validation.Valid;
@@ -18,6 +20,9 @@ public class FacultyWorkflowController {
 
     @Autowired
     private FacultyStudentService facultyStudentService;
+
+    @Autowired
+    private FacultyDriveFilteringService facultyDriveFilteringService;
 
     private String resolveFacultyEmail(String facultyEmail, Authentication authentication) {
         if (authentication != null && authentication.getName() != null && !authentication.getName().isBlank()) {
@@ -51,5 +56,19 @@ public class FacultyWorkflowController {
                 request.getStudentIds(),
                 resolveFacultyEmail(facultyEmail, authentication));
         return ResponseEntity.ok(ApiResponse.success("Students sent to admin successfully", null));
+    }
+
+    @PutMapping("/update-stage")
+    public ResponseEntity<ApiResponse<Void>> updateStage(
+            @Valid @RequestBody FacultyStageUpdateRequestDTO request,
+            @RequestParam(required = false) String facultyEmail,
+            Authentication authentication) {
+
+        facultyDriveFilteringService.updateApplicationStage(
+                request.getStudentId(),
+                request.getDriveId(),
+                request.getStage().name(),
+                resolveFacultyEmail(facultyEmail, authentication));
+        return ResponseEntity.ok(ApiResponse.success("Student stage updated successfully", null));
     }
 }

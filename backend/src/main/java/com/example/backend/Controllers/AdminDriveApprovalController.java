@@ -1,6 +1,7 @@
 package com.example.backend.Controllers;
 
 import com.example.backend.DTOs.Admin.AdminStageUpdateRequestDTO;
+import com.example.backend.DTOs.Admin.DriveApprovalSummaryDTO;
 import com.example.backend.DTOs.Admin.DriveApplicationDTO;
 import com.example.backend.Services.AdminShortlistService;
 import com.example.backend.Utils.ApiResponse;
@@ -22,6 +23,12 @@ public class AdminDriveApprovalController {
     public ResponseEntity<ApiResponse<List<DriveApplicationDTO>>> getApprovedStudents(@PathVariable Long driveId) {
         List<DriveApplicationDTO> response = adminShortlistService.getFacultyApprovedApplicants(driveId);
         return ResponseEntity.ok(ApiResponse.success("Faculty-approved students fetched successfully", response));
+    }
+
+    @GetMapping("/drive-approvals/summary")
+    public ResponseEntity<ApiResponse<List<DriveApprovalSummaryDTO>>> getDriveApprovalSummary() {
+        List<DriveApprovalSummaryDTO> response = adminShortlistService.getDriveApprovalSummary();
+        return ResponseEntity.ok(ApiResponse.success("Drive approval summary fetched successfully", response));
     }
 
     @PutMapping("/update-stage")

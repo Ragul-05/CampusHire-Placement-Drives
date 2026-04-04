@@ -19,10 +19,11 @@ function toLabel(stage: string): string {
 
 export default function StageDropdown({ value, onChange, disabled, disableSelected, className }: Props) {
   const normalized = value === 'APPLIED' ? 'ELIGIBLE' : value;
+  const stageClass = `stage-select-${normalized.toLowerCase()}`;
 
   return (
     <select
-      className={`stage-select ${className ?? ''}`.trim()}
+      className={`stage-select ${stageClass} ${className ?? ''}`.trim()}
       value={normalized}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}

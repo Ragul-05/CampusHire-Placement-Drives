@@ -74,7 +74,11 @@ export default function ExportButton({ opts, disabled = false, label = 'Export' 
     /* Small tick so the UI updates before the heavy export runs */
     await new Promise(r => setTimeout(r, 60));
     try {
-      runExport(fmt, opts);
+      const sourceElement = ref.current?.closest('.page-container')
+        || ref.current?.closest('.content')
+        || ref.current?.closest('.main')
+        || null;
+      await runExport(fmt, opts, sourceElement as HTMLElement | null);
     } finally {
       setLoading(null);
     }

@@ -5,7 +5,7 @@ This walkthrough maps the main user journeys (Student, Faculty, Admin) to the co
 ## How to read this
 - Requests are REST over JSON; all responses use `ApiResponse<T>`.
 - Roles are enforced logically (JWT mocked via query params in dev). Faculty scope is department-bound; Admin is system-wide; Student only self.
-- Stages/enums: drive status `UPCOMING|ONGOING|COMPLETED`, application stage `APPLIED→ASSESSMENT→TECHNICAL→HR→SELECTED` (final stage by Admin via offer), verification status `PENDING|VERIFIED|REJECTED`.
+- Stages/enums: drive status `UPCOMING|ONGOING|COMPLETED`, application stage `ELIGIBLE/APPLIED→ASSESSMENT→TECHNICAL→HR→SELECTED|REJECTED`, verification status `PENDING|VERIFIED|REJECTED`.
 
 ---
 ## 1) Student Journeys
@@ -45,12 +45,15 @@ This walkthrough maps the main user journeys (Student, Faculty, Admin) to the co
 - **Applications list**: `GET /api/faculty/applications` → `FacultyApplicationService.getDepartmentApplications`.
 - **Advance stage**: `PUT /api/faculty/applications/{id}/stage` with `StageUpdateRequestDTO{stage}` → `FacultyApplicationService.updateApplicationStage`
   - Guard: only forward progression up to `HR`; `SELECTED` is reserved for Admin offers.
+- **Shared stage update flow**: `PUT /api/stage/update` (used by updated admin/faculty placement pages) → central stage transition rules in `StageUpdateService`.
 
 ### 2.3 Department Communications & Analytics
 - **Announcements**: `GET/POST/DELETE /api/faculty/announcements` → `FacultyAnnouncementService` scoped to department.
 - **Events**: `GET/POST/DELETE /api/faculty/events` → `FacultyAnnouncementService` for events.
 - **Analytics**: `GET /api/faculty/analytics` → `FacultyAnalyticsService` (top recruiters, avg package, placement % per department).
 - **Dashboard**: `GET /api/faculty/dashboard/stats` → `FacultyDashboardService` metrics snapshot.
+- **Activity Logs**: `GET /api/faculty/audit?query=` → faculty-scoped audit trail.
+- **Placement Results**: `GET /api/faculty/placement-results` (compat) or `GET /api/placement-results` (unified).
 
 ---
 ## 3) Admin Journeys (placement office)
@@ -76,6 +79,7 @@ This walkthrough maps the main user journeys (Student, Faculty, Admin) to the co
 - **Dashboard stats**: `GET /api/admin/dashboard/stats` → `AdminDashboardService` (totals, verified, placed, active drives).
 - **Placement analytics**: `GET /api/admin/analytics/placements` → `AdminAnalyticsService` macro KPIs.
 - **Audit logs**: `GET /api/admin/audit?query=` → `AdminAuditService` (populated by AOP `@AuditAction`).
+- **Placement Results**: `GET /api/admin/placement-results` (compat) or `GET /api/placement-results` (unified).
 - **Exports**: `GET /api/admin/export/students` and `/drives/{id}/results` → `AdminExportService` returns CSV.
 - **Student admin ops**: search/view/lock via `/api/admin/students` → `AdminStudentService`; lock toggles `isLocked` with audit.
 - **Announcements**: admin-wide broadcasts via `/api/admin/announcements`.
@@ -84,6 +88,7 @@ This walkthrough maps the main user journeys (Student, Faculty, Admin) to the co
 ## 4) Architecture Notes (where logic lives)
 - **Controllers**: under `Controllers/` (see API list above).
 - **Services**: `Services/` hold business logic and validation; most methods are transactional.
+- **Cross-role result consistency**: Placement Results is now exposed through unified flow (`/api/placement-results`) and consumed by both Admin and Faculty portals.
 - **Repositories**: Spring Data JPA interfaces for entities (Users, StudentProfile, PlacementDrive, DriveApplication, Offer, etc.).
 - **Aspects**: `AdminAuditAspect`, `LoggingAspect`, `StudentAccessAspect` wrap sensitive endpoints and mock identity for dev.
 - **DTOs/Mappers**: request/response contracts under `DTOs/` (Admin/Faculty/Student packages) with validation annotations.

@@ -7,6 +7,7 @@
 - Auth: JWT is expected (mocked via `?email=` / `?facultyEmail=` on many endpoints for local testing).
 - IDs: `Long` unless stated otherwise.
 - Date/Time: ISO-8601 strings.
+- Current application stages: `ELIGIBLE`, `APPLIED`, `ASSESSMENT`, `TECHNICAL`, `HR`, `SELECTED`, `REJECTED`.
 
 ---
 ## Student Module
@@ -38,6 +39,8 @@
 - **PUT** `/api/faculty/applications/{id}/stage?facultyEmail=` — body `StageUpdateRequestDTO{stage}` → advance stage (APPLIED→ASSESSMENT→TECHNICAL→HR).
 - **GET** `/api/faculty/analytics?facultyEmail=` → `FacultyAnalyticsDTO` (top recruiters, avg package, placement % for dept).
 - **GET** `/api/faculty/dashboard/stats?facultyEmail=` → `FacultyDashboardStatsDTO`.
+- **GET** `/api/faculty/placement-results?facultyEmail=` → `PlacementResultsResponseDTO` (compat endpoint).
+- **GET** `/api/faculty/audit?query=&facultyEmail=` → faculty-scoped `AuditLogDTO` list.
 - **GET** `/api/faculty/announcements?facultyEmail=` → dept announcements.
 - **POST** `/api/faculty/announcements?facultyEmail=` — body `Announcement` → create dept announcement.
 - **DELETE** `/api/faculty/announcements/{id}?facultyEmail=` → delete dept announcement.
@@ -67,6 +70,7 @@
 - **GET** `/api/admin/export/drives/{driveId}/results?email=` → CSV of drive results.
 - **GET** `/api/admin/dashboard/stats` → `DashboardStatsDTO` (totals, verified, placed, active drives).
 - **GET** `/api/admin/analytics/placements` → `AnalyticsResponseDTO` (macro placement analytics).
+- **GET** `/api/admin/placement-results` → `PlacementResultsResponseDTO` (compat endpoint).
 - **GET** `/api/admin/students/search?query=` → list `AdminStudentProfileDTO` (verified students search).
 - **GET** `/api/admin/students/{studentId}` → `AdminStudentProfileDTO` by id.
 - **PATCH** `/api/admin/students/{studentId}/toggle-lock?email=` → lock/unlock profile.
@@ -74,6 +78,14 @@
 - **POST** `/api/admin/announcements?email=` — body `AnnouncementRequestDTO` → create announcement.
 - **DELETE** `/api/admin/announcements/{id}?email=` → delete announcement.
 - **GET** `/api/admin/audit?query=` → list `AuditLogDTO` (actions captured by AOP).
+
+## Shared / Cross-Role Module
+- **GET** `/api/placement-results?email=&facultyEmail=` → `PlacementResultsResponseDTO`.
+	- Role-aware behavior via resolved actor:
+		- Placement Head/Admin: system-wide data
+		- Faculty: same placement-results flow (current implementation aligned to admin dataset for consistency)
+- **PUT** `/api/stage/update?email=&facultyEmail=` — body `FacultyStageUpdateRequestDTO{studentId,driveId,stage}`.
+	- Shared stage update entry point used by faculty/admin placement workflows.
 
 ## Common DTO Highlights (fields abridged)
 - `AuthRequestDto`: `email`, `password`.

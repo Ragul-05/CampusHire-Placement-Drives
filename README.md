@@ -78,6 +78,23 @@ Stage Progression: APPLIED → ASSESSMENT → TECHNICAL → HR → SELECTED
 Placement Head Records Offer → Student Profile Locked → Drive Completed
 ```
 
+### 🆕 Recent Updates (Apr 2026)
+
+- Added a dedicated **Placement Results** experience for both Admin and Faculty with:
+  - Summary KPIs (total/placed/unplaced/placement %)
+  - Placed vs Unplaced table
+  - Company-wise round analysis
+  - Student round tracking with filters/search
+- Added role-aware unified backend endpoint: **`GET /api/placement-results`**.
+  - Admin and Faculty now read through the same placement-results flow for consistency.
+- Added faculty-specific activity logs endpoint: **`GET /api/faculty/audit`**.
+- Standardized stage update flow with shared endpoint: **`PUT /api/stage/update`**.
+- Stage model now includes **REJECTED** and UI stage color coding is standardized.
+- Export system enhanced:
+  - PDF includes chart snapshots and aligned tabular sections
+  - Excel includes placement + company-round data sections
+- Refresh behavior is now controlled (manual refresh + reduced polling frequency), and placement results tables support smoother pagination transitions.
+
 ---
 
 ## 🏗️ System Architecture

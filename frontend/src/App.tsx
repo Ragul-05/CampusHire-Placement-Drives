@@ -26,6 +26,7 @@ import StudentApplications from './pages/StudentApplications';
 import StudentProfile      from './pages/StudentProfile';
 import StudentOffers       from './pages/StudentOffers';
 import StudentAnnouncements from './pages/StudentAnnouncements';
+import StudentNotifications from './pages/StudentNotifications';
 
 /* ── Route path constants — imported from utils/routes.ts to avoid circular deps ── */
 export { ROUTES } from './utils/routes';
@@ -134,7 +135,7 @@ function AppRoutes() {
       <Route path={ROUTES.studentOffers}        element={<RequireStudent><StudentOffers       /></RequireStudent>} />
       <Route path={ROUTES.studentAnnouncements} element={<RequireStudent><StudentAnnouncements /></RequireStudent>} />
       <Route path={ROUTES.studentProfile}       element={<RequireStudent><StudentProfile      /></RequireStudent>} />
-      <Route path={ROUTES.studentNotifications} element={<RequireStudent><StudentDashboard    /></RequireStudent>} />
+      <Route path={ROUTES.studentNotifications} element={<RequireStudent><StudentNotifications /></RequireStudent>} />
 
       {/* ── Faculty routes (protected) ── */}
       <Route path={ROUTES.facultyDashboard}    element={<RequireFaculty><FacultyDashboard    onNavigate={goto} /></RequireFaculty>} />

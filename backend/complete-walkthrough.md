@@ -15,7 +15,7 @@
 ## 2. Domain & State Machines
 - **Roles**: `STUDENT`, `FACULTY`, `PLACEMENT_HEAD` (admin).
 - **Drive Status**: `UPCOMING`, `ONGOING`, `COMPLETED` (patched by Admin only).
-- **Application Stage**: `APPLIED → ASSESSMENT → TECHNICAL → HR → SELECTED` (Faculty can advance up to HR; Admin finalizes via offer).
+- **Application Stage**: `ELIGIBLE/APPLIED → ASSESSMENT → TECHNICAL → HR → SELECTED | REJECTED`.
 - **Profile Verification**: `PENDING`, `VERIFIED`, `REJECTED`; once verified or placed, profile locks (`isLocked`).
 
 ## 3. Data Model (tables/entities)
@@ -48,6 +48,7 @@ Principal tables from seeds/entities (names as in SQL):
 - **FacultyAnnouncementController → FacultyAnnouncementService**: dept announcements/events CRUD.
 - **FacultyAnalyticsController → FacultyAnalyticsService**: dept analytics (top recruiters, avg LPA, placement%).
 - **FacultyDashboardController → FacultyDashboardService**: dept dashboard stats.
+- **FacultyAuditController → AdminAuditService**: faculty-scoped activity logs (`/api/faculty/audit`).
 - **AdminCompanyController → AdminCompanyService**: company CRUD.
 - **AdminPlacementDriveController → AdminPlacementDriveService**: drive CRUD/status changes.
 - **AdminEligibilityController → AdminEligibilityService**: set/get eligibility.
@@ -60,6 +61,8 @@ Principal tables from seeds/entities (names as in SQL):
 - **AdminStudentController → AdminStudentService**: search/view/lock profiles.
 - **AdminAnnouncementController → AdminAnnouncementService**: admin-wide announcements.
 - **AdminAuditController → AdminAuditService**: query audit logs.
+- **PlacementResultsController → PlacementResultsService**: unified placement results endpoint (`/api/placement-results`) + compatibility routes for admin/faculty.
+- **StageController → StageUpdateService**: shared stage update API for role-aware stage transitions.
 
 ## 5. Transaction & Validation Highlights
 - Services use transactional methods for write paths (drive create/update, apply, verify, offers).
@@ -72,6 +75,17 @@ Principal tables from seeds/entities (names as in SQL):
 - `@AuditAction` on sensitive endpoints (drive create/update/status, shortlist, offers, exports, announcements, profile lock) → `AdminAuditAspect` writes to `audit_logs` (action, targetEntity, actor/email, timestamp, ip if available).
 - `LoggingAspect` adds method-level tracing.
 - `StudentAccessAspect` allows `?email=` for student endpoints during dev (simulated principal).
+- Audit retrieval is now role-aware at API surface:
+  - Admin: `/api/admin/audit`
+  - Faculty: `/api/faculty/audit`
+
+## 10. Recent Product Updates (Apr 2026)
+- Added full **Placement Results** pages in Admin and Faculty portals.
+- Introduced unified backend endpoint **`GET /api/placement-results`** for cross-role result consistency.
+- Added **faculty activity logs** endpoint and frontend integration.
+- Added **REJECTED** stage handling in placement flows and UI stage color standardization.
+- Upgraded export flows (PDF/Excel) to include richer placement + company round analysis sections and chart-inclusive PDFs.
+- Reduced aggressive auto-refresh patterns and moved dashboards/pages to controlled refresh behavior.
 
 ## 7. Error Handling
 - `GlobalExceptionHandler` maps custom exceptions: `ResourceNotFoundException` (404), `DuplicateApplicationException`, `EligibilityNotMetException`, `InvalidDriveStateException`, `ProfileLockedException` (400), generic (500). Error shape: `timestamp`, `message`, `details`.

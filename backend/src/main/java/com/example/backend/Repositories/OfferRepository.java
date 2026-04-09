@@ -13,6 +13,8 @@ import java.util.Optional;
 public interface OfferRepository extends JpaRepository<Offer, Long> {
     List<Offer> findByDriveId(Long driveId);
 
+    Optional<Offer> findByIdAndStudentProfileId(Long id, Long studentId);
+
     Optional<Offer> findByDriveIdAndStudentProfileId(Long driveId, Long studentId);
 
     List<Offer> findAllByOrderByIssuedAtDesc();
@@ -22,6 +24,14 @@ public interface OfferRepository extends JpaRepository<Offer, Long> {
 
     @org.springframework.data.jpa.repository.Query("SELECT c.name, COUNT(o) FROM Offer o JOIN o.drive d JOIN d.company c GROUP BY c.name ORDER BY COUNT(o) DESC")
     List<Object[]> countOffersByCompany();
+
+    @org.springframework.data.jpa.repository.Query("SELECT d.name, COUNT(o) FROM Offer o JOIN o.studentProfile s JOIN s.user u JOIN u.department d GROUP BY d.name")
+    List<Object[]> countOffersByDepartment();
+
+    @org.springframework.data.jpa.repository.Query("SELECT c.name, COUNT(o) FROM Offer o JOIN o.drive d JOIN d.company c WHERE o.studentProfile.user.department.id = :departmentId GROUP BY c.name ORDER BY COUNT(o) DESC")
+    List<Object[]> countOffersByCompanyForDepartment(@Param("departmentId") Long departmentId);
+
+    long countByStudentProfileUserDepartmentId(Long departmentId);
 
     List<Offer> findByStudentProfileUserDepartmentIdOrderByIssuedAtDesc(Long departmentId);
 }

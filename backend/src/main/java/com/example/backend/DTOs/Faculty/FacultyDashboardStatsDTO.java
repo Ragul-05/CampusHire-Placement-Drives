@@ -14,6 +14,7 @@ public class FacultyDashboardStatsDTO {
     private Long eligibleForDrives;
     private Long totalStudents; // backward compatibility
     private Long placedStudents;
+    private Long totalOffers;
     private Double placementPercentage;
     private Long ongoingDrives;
     private Long activeApplications;

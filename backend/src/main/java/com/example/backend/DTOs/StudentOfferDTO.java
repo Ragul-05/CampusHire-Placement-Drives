@@ -16,6 +16,7 @@ public class StudentOfferDTO {
     private Double ctcLpa;
     private LocalDateTime issuedAt;
     private String status; // "OFFERED"
+    private Boolean accepted;
     // student placement summary
     private Boolean isPlaced;
     private Boolean isLocked;

@@ -10,7 +10,9 @@ public class FacultyAnalyticsDTO {
     private Double averagePackageLpa;
     private Double highestPackageLpa;
     private Long totalPlaced;
+    private Long totalOffers;
     private Long totalEligible;
     private Double placementPercentage;
     private Map<String, Long> topRecruiters; // Company Name -> Students placed
+    private Map<String, Long> monthlyOfferTrend;
 }

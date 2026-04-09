@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -16,4 +18,6 @@ public class PlacementStatusRowDTO {
     private String placementStatus;
     private String companyName;
     private Double ctc;
+    private List<String> offeredCompanies;
+    private Integer offerCount;
 }

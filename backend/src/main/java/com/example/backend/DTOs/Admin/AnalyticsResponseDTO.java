@@ -10,6 +10,9 @@ public class AnalyticsResponseDTO {
     private Double placementRate;
     private Long totalPlaced;
     private Long totalVerified;
+    private Long totalOffers;
     private Map<String, Long> topRecruiters;
     private Map<String, Long> branchWisePlacements;
+    private Map<String, Long> branchWiseOffers;
+    private Map<String, Long> monthlyOfferTrend;
 }

@@ -9,6 +9,7 @@ public class DashboardStatsDTO {
     private long totalStudents;
     private long verifiedStudents;
     private long placedStudents;
+    private long totalOffers;
     private long ongoingDrives;
     private long completedDrives;
     private double highestCtc;

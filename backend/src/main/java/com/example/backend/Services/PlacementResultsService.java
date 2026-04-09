@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -74,6 +75,9 @@ public class PlacementResultsService {
                 ? offerRepository.findAllByOrderByIssuedAtDesc()
                 : offerRepository.findByStudentProfileUserDepartmentIdOrderByIssuedAtDesc(departmentId);
 
+        Map<Long, List<Offer>> offersByStudent = offers.stream()
+                .collect(Collectors.groupingBy(offer -> offer.getStudentProfile().getId()));
+
         Map<Long, Offer> latestOfferByStudent = new HashMap<>();
         for (Offer offer : offers) {
             Long studentId = offer.getStudentProfile().getId();
@@ -94,6 +98,7 @@ public class PlacementResultsService {
 
         List<PlacementStatusRowDTO> placedVsUnplaced = students.stream()
                 .map(student -> {
+                List<Offer> studentOffers = offersByStudent.getOrDefault(student.getId(), List.of());
                     Offer latestOffer = latestOfferByStudent.get(student.getId());
                     boolean placed = isPlaced(student, latestOffer);
                     return PlacementStatusRowDTO.builder()
@@ -101,8 +106,10 @@ public class PlacementResultsService {
                             .studentName(getStudentName(student))
                             .department(getDepartmentName(student))
                             .placementStatus(placed ? "PLACED" : "UNPLACED")
-                            .companyName(placed ? getCompanyName(student, latestOffer) : null)
-                            .ctc(placed ? getCtc(student, latestOffer) : null)
+                    .companyName(placed ? getCompanyName(student, studentOffers, latestOffer) : null)
+                    .ctc(placed ? getCtc(student, studentOffers, latestOffer) : null)
+                    .offeredCompanies(placed ? getOfferedCompanies(studentOffers) : List.of())
+                    .offerCount(placed ? studentOffers.size() : 0)
                             .build();
                 })
                 .sorted(Comparator.comparing(PlacementStatusRowDTO::getStudentName, String.CASE_INSENSITIVE_ORDER))
@@ -187,7 +194,28 @@ public class PlacementResultsService {
         return Boolean.TRUE.equals(student.getIsPlaced()) || latestOffer != null;
     }
 
-    private String getCompanyName(StudentProfile student, Offer latestOffer) {
+    private List<String> getOfferedCompanies(List<Offer> studentOffers) {
+        if (studentOffers == null || studentOffers.isEmpty()) {
+            return List.of();
+        }
+
+        LinkedHashSet<String> uniqueCompanies = new LinkedHashSet<>();
+        for (Offer offer : studentOffers) {
+            if (offer.getDrive() != null
+                    && offer.getDrive().getCompany() != null
+                    && offer.getDrive().getCompany().getName() != null
+                    && !offer.getDrive().getCompany().getName().isBlank()) {
+                uniqueCompanies.add(offer.getDrive().getCompany().getName());
+            }
+        }
+        return new ArrayList<>(uniqueCompanies);
+    }
+
+    private String getCompanyName(StudentProfile student, List<Offer> studentOffers, Offer latestOffer) {
+        List<String> offeredCompanies = getOfferedCompanies(studentOffers);
+        if (!offeredCompanies.isEmpty()) {
+            return offeredCompanies.get(0);
+        }
         if (latestOffer != null && latestOffer.getDrive() != null && latestOffer.getDrive().getCompany() != null) {
             return latestOffer.getDrive().getCompany().getName();
         }
@@ -197,7 +225,17 @@ public class PlacementResultsService {
         return null;
     }
 
-    private Double getCtc(StudentProfile student, Offer latestOffer) {
+    private Double getCtc(StudentProfile student, List<Offer> studentOffers, Offer latestOffer) {
+        if (studentOffers != null && !studentOffers.isEmpty()) {
+            Double maxOfferCtc = studentOffers.stream()
+                    .map(Offer::getCtc)
+                    .filter(value -> value != null)
+                    .max(Double::compareTo)
+                    .orElse(null);
+            if (maxOfferCtc != null) {
+                return maxOfferCtc;
+            }
+        }
         if (latestOffer != null && latestOffer.getCtc() != null) {
             return latestOffer.getCtc();
         }

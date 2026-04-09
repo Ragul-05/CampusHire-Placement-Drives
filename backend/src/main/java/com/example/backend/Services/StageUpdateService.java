@@ -80,7 +80,6 @@ public class StageUpdateService {
 
         StudentProfile student = application.getStudentProfile();
         student.setIsPlaced(true);
-        student.setIsLocked(true);
         int currentOffers = student.getNumberOfOffers() != null ? student.getNumberOfOffers() : 0;
         if (!offerExists) {
             student.setNumberOfOffers(currentOffers + 1);

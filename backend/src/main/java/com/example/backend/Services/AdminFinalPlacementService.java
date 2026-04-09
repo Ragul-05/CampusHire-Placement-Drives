@@ -71,7 +71,6 @@ public class AdminFinalPlacementService {
 
         // Update Student Profile
         student.setIsPlaced(true);
-        student.setIsLocked(true);
         int currentOffers = student.getNumberOfOffers() != null ? student.getNumberOfOffers() : 0;
         student.setNumberOfOffers(currentOffers + 1);
         double currentMax = student.getHighestPackageLpa() != null ? student.getHighestPackageLpa() : 0.0;

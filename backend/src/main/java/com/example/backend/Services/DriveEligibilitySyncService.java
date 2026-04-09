@@ -69,6 +69,15 @@ public class DriveEligibilitySyncService {
     private void syncSingleMapping(StudentProfile profile, PlacementDrive drive) {
         Optional<DriveApplication> existingOpt = driveApplicationRepository.findByStudentProfileIdAndDriveId(profile.getId(), drive.getId());
 
+        // Locked profiles must not attend/apply to additional drives.
+        // Clean up only auto-eligible placeholders while preserving progressed records.
+        if (Boolean.TRUE.equals(profile.getIsLocked())) {
+            if (existingOpt.isPresent() && existingOpt.get().getStage() == ApplicationStage.ELIGIBLE) {
+                driveApplicationRepository.delete(existingOpt.get());
+            }
+            return;
+        }
+
         if (drive.getStatus() == DriveStatus.COMPLETED) {
             return;
         }

@@ -11,6 +11,7 @@ import com.example.backend.Models.User;
 import com.example.backend.Models.enums.DriveStatus;
 import com.example.backend.Models.enums.VerificationStatus;
 import com.example.backend.Repositories.DriveApplicationRepository;
+import com.example.backend.Repositories.OfferRepository;
 import com.example.backend.Repositories.PlacementDriveRepository;
 import com.example.backend.Repositories.ProfileVerificationRepository;
 import com.example.backend.Repositories.StudentProfileRepository;
@@ -47,6 +48,9 @@ public class FacultyDashboardService {
     @Autowired
     private PlacementEligibilityService placementEligibilityService;
 
+        @Autowired
+        private OfferRepository offerRepository;
+
     public FacultyDashboardStatsDTO getDepartmentStats(String facultyEmail) {
         User faculty = userRepository.findByEmail(facultyEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Faculty not found"));
@@ -72,6 +76,7 @@ public class FacultyDashboardService {
         long placedStudents = visibleStudents.stream()
                 .filter(student -> Boolean.TRUE.equals(student.getIsPlaced()))
                 .count();
+        long totalOffers = offerRepository.countByStudentProfileUserDepartmentId(departmentId);
         long eligibleForDrives = visibleStudents.stream()
                 .filter(student -> Boolean.TRUE.equals(student.getIsEligibleForPlacements()))
                 .count();
@@ -105,6 +110,7 @@ public class FacultyDashboardService {
                 .eligibleForDrives(eligibleForDrives)
                 .totalStudents(totalStudents) // backward compatibility
                 .placedStudents(placedStudents)
+                .totalOffers(totalOffers)
                 .placementPercentage(placementPercentage)
                 .ongoingDrives(ongoingDrives)
                 .activeApplications(activeApplications)
@@ -117,17 +123,17 @@ public class FacultyDashboardService {
     private List<FacultyDashboardStatsDTO.MonthlyTrend> calculateMonthlyVerificationTrend(Long departmentId) {
         List<FacultyDashboardStatsDTO.MonthlyTrend> trends = new ArrayList<>();
         LocalDate now = LocalDate.now();
+        List<com.example.backend.Models.Offer> deptOffers = offerRepository
+                .findByStudentProfileUserDepartmentIdOrderByIssuedAtDesc(departmentId);
 
         for (int i = 5; i >= 0; i--) {
             LocalDate monthDate = now.minusMonths(i);
             String monthName = monthDate.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
 
-            long count = profileVerificationRepository.findByStudentProfileUserDepartmentId(departmentId)
-                    .stream()
-                    .filter(v -> v.getVerifiedAt() != null)
-                    .filter(v -> v.getStatus() == VerificationStatus.VERIFIED)
-                    .filter(v -> v.getVerifiedAt().getYear() == monthDate.getYear()
-                            && v.getVerifiedAt().getMonthValue() == monthDate.getMonthValue())
+            long count = deptOffers.stream()
+                    .filter(v -> v.getIssuedAt() != null)
+                    .filter(v -> v.getIssuedAt().getYear() == monthDate.getYear()
+                            && v.getIssuedAt().getMonthValue() == monthDate.getMonthValue())
                     .count();
 
             trends.add(FacultyDashboardStatsDTO.MonthlyTrend.builder()

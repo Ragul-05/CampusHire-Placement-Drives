@@ -5,6 +5,7 @@ import com.example.backend.Models.enums.DriveStatus;
 import com.example.backend.Models.enums.Role;
 import com.example.backend.Models.enums.VerificationStatus;
 import com.example.backend.Repositories.CompanyRepository;
+import com.example.backend.Repositories.OfferRepository;
 import com.example.backend.Repositories.PlacementDriveRepository;
 import com.example.backend.Repositories.StudentProfileRepository;
 import com.example.backend.Repositories.UserRepository;
@@ -26,11 +27,15 @@ public class AdminDashboardService {
     @Autowired
     private CompanyRepository companyRepository;
 
+    @Autowired
+    private OfferRepository offerRepository;
+
     public DashboardStatsDTO getDashboardStats() {
         return DashboardStatsDTO.builder()
                 .totalStudents(userRepository.countByRole(Role.STUDENT))
                 .verifiedStudents(studentProfileRepository.countByVerificationStatus(VerificationStatus.VERIFIED))
                 .placedStudents(studentProfileRepository.countByIsPlacedTrue())
+                .totalOffers(offerRepository.count())
                 .ongoingDrives(placementDriveRepository.countByStatus(DriveStatus.ONGOING))
                 .completedDrives(placementDriveRepository.countByStatus(DriveStatus.COMPLETED))
                 .highestCtc(studentProfileRepository.findHighestCtc())

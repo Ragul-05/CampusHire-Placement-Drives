@@ -21,9 +21,11 @@ type FacultyAnalyticsDTO = {
   averagePackageLpa: number;
   highestPackageLpa: number;
   totalPlaced: number;
+  totalOffers?: number;
   totalEligible: number;
   placementPercentage: number;
   topRecruiters: Record<string, number>; // Company -> count
+  monthlyOfferTrend?: Record<string, number>;
 };
 
 /* GET /api/faculty/dashboard/stats */
@@ -205,6 +207,8 @@ function AIInsightCard({ stats, analytics, stageData }: {
     if (analytics) {
       if (analytics.placementPercentage > 0)
         list.push(`Placement rate stands at ${analytics.placementPercentage.toFixed(1)}% with avg package ₹${analytics.averagePackageLpa?.toFixed(1)} LPA.`);
+      if ((analytics.totalOffers ?? 0) > 0)
+        list.push(`${analytics.totalOffers} total offer${(analytics.totalOffers ?? 0) > 1 ? 's' : ''} issued so far.`);
     }
     const selected = stageData.find(s => s.stage === 'SELECTED');
     if (selected?.count) list.push(`${selected.count} student${selected.count > 1 ? 's' : ''} have been selected via placement drives.`);
@@ -294,14 +298,18 @@ export default function Analytics({ onNavigate }: { onNavigate?: (view: any) => 
             getJson<{
               placementRate: number;
               totalPlaced: number;
+              totalOffers?: number;
               totalVerified: number;
               topRecruiters: Record<string, number>;
               branchWisePlacements: Record<string, number>;
+              branchWiseOffers?: Record<string, number>;
+              monthlyOfferTrend?: Record<string, number>;
             }>('/api/admin/analytics/placements'),
             getJson<{
               totalStudents: number;
               verifiedStudents: number;
               placedStudents: number;
+              totalOffers?: number;
               ongoingDrives: number;
               completedDrives: number;
               highestCtc: number;
@@ -318,9 +326,11 @@ export default function Analytics({ onNavigate }: { onNavigate?: (view: any) => 
             averagePackageLpa:    adminStat?.averageCtc         ?? 0,
             highestPackageLpa:    adminStat?.highestCtc         ?? 0,
             totalPlaced:          Number(adminAna?.totalPlaced  ?? 0),
+            totalOffers:          Number(adminAna?.totalOffers  ?? adminStat?.totalOffers ?? 0),
             totalEligible:        Number(adminAna?.totalVerified ?? 0),
             placementPercentage:  adminAna?.placementRate        ?? 0,
             topRecruiters:        adminAna?.topRecruiters        ?? {},
+            monthlyOfferTrend:    adminAna?.monthlyOfferTrend    ?? {},
           });
 
           // Map admin stats DTO → DashboardStats shape
@@ -330,9 +340,11 @@ export default function Analytics({ onNavigate }: { onNavigate?: (view: any) => 
             verifiedStudents:        Number(adminStat?.verifiedStudents  ?? 0),
             eligibleForDrives:       Number(adminStat?.verifiedStudents  ?? 0),
             statusDistribution:      { pending: 0, verified: Number(adminStat?.verifiedStudents ?? 0), rejected: 0 },
-            monthlyTrend:            [],
-            driveEligibility:        adminAna?.branchWisePlacements
-              ? Object.entries(adminAna.branchWisePlacements).map(([k, v]) => ({ driveName: k, eligibleCount: Number(v) }))
+            monthlyTrend:            adminAna?.monthlyOfferTrend
+              ? Object.entries(adminAna.monthlyOfferTrend).map(([k, v]) => ({ month: k, verified: Number(v) }))
+              : [],
+            driveEligibility:        (adminAna?.branchWiseOffers || adminAna?.branchWisePlacements)
+              ? Object.entries(adminAna.branchWiseOffers || adminAna.branchWisePlacements).map(([k, v]) => ({ driveName: k, eligibleCount: Number(v) }))
               : [],
           });
           setApplications([]);
@@ -399,7 +411,7 @@ export default function Analytics({ onNavigate }: { onNavigate?: (view: any) => 
     { label: 'Total Dept. Students', value: stats?.totalDepartmentStudents ?? '—', icon: <Users size={18} />,       color: '#6366f1', sub: 'Department scope'          },
     { label: 'Verified Students',    value: stats?.verifiedStudents ?? '—',        icon: <CheckCircle2 size={18} />, color: '#10b981', sub: `${stats?.pendingVerifications ?? 0} pending` },
     { label: 'Eligible for Drives',  value: stats?.eligibleForDrives ?? '—',       icon: <Target size={18} />,       color: '#06b6d4', sub: 'Placement ready'           },
-    { label: 'Total Placed',         value: analytics?.totalPlaced ?? '—',         icon: <Award size={18} />,        color: '#f59e0b', sub: analytics?.placementPercentage ? `${analytics.placementPercentage.toFixed(1)}% rate` : '—' },
+    { label: 'Total Offers',         value: analytics?.totalOffers ?? analytics?.totalPlaced ?? '—', icon: <Award size={18} />, color: '#f59e0b', sub: analytics?.placementPercentage ? `${analytics.placementPercentage.toFixed(1)}% placement rate` : '—' },
     { label: 'Avg Package',          value: analytics?.averagePackageLpa ? `₹${analytics.averagePackageLpa.toFixed(1)}L` : '—', icon: <TrendingUp size={18} />, color: '#8b5cf6', sub: `Highest ₹${analytics?.highestPackageLpa?.toFixed(1) ?? '—'}L` },
     { label: 'Active Applications',  value: applications.length,                   icon: <Activity size={18} />,     color: '#ec4899', sub: 'Across all drives'         },
   ];
@@ -531,7 +543,7 @@ export default function Analytics({ onNavigate }: { onNavigate?: (view: any) => 
 
           {/* Chart 3 — Verification Trend Line */}
           <ChartCard
-            title="Monthly Verification Trend"
+            title="Monthly Offer Trend"
             badge={`Last ${dateRange === 'all' ? 'all' : dateRange}`}
             badgeColor="#10b981"
             onExport={() => exportChartAsCSV('Verification_Trend', trendData, ['month', 'verified'])}

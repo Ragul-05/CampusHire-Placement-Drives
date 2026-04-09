@@ -36,6 +36,40 @@ type ApprovedStudent = {
   skills?: string[];
 };
 
+function stageBadgeClass(stage: string): string {
+  switch (stage) {
+    case 'ELIGIBLE':
+      return 'da-stage-badge da-stage-eligible';
+    case 'APPLIED':
+      return 'da-stage-badge da-stage-applied';
+    case 'ASSESSMENT':
+      return 'da-stage-badge da-stage-assessment';
+    case 'TECHNICAL':
+      return 'da-stage-badge da-stage-technical';
+    case 'HR':
+      return 'da-stage-badge da-stage-hr';
+    case 'SELECTED':
+      return 'da-stage-badge da-stage-selected';
+    case 'REJECTED':
+      return 'da-stage-badge da-stage-rejected';
+    default:
+      return 'da-stage-badge da-stage-default';
+  }
+}
+
+function approvalBadgeClass(student: ApprovedStudent): string {
+  if (student.stage === 'SELECTED') return 'da-approval-badge da-approval-selected';
+  if (student.stage === 'REJECTED') return 'da-approval-badge da-approval-rejected';
+  if (student.facultyApproved) return 'da-approval-badge da-approval-approved';
+  return 'da-approval-badge da-approval-pending';
+}
+
+function approvalLabel(student: ApprovedStudent): string {
+  if (student.stage === 'SELECTED') return 'SELECTED';
+  if (student.stage === 'REJECTED') return 'REJECTED';
+  return student.facultyApproved ? 'APPROVED' : 'PENDING';
+}
+
 export default function DriveApprovals({ onNavigate }: { onNavigate?: (view: string) => void }) {
   const [drives, setDrives] = useState<Drive[]>([]);
   const [driveSummaries, setDriveSummaries] = useState<DriveApprovalSummary[]>([]);
@@ -331,10 +365,10 @@ export default function DriveApprovals({ onNavigate }: { onNavigate?: (view: str
                       <td>{student.departmentName}</td>
                       <td><span className="cgpa-badge">{student.cgpa?.toFixed?.(2) ?? student.cgpa}</span></td>
                       <td style={{ maxWidth: 240 }}>{(student.skills || []).join(', ') || '—'}</td>
-                      <td><span className="badge info">{student.stage}</span></td>
+                      <td><span className={stageBadgeClass(student.stage)}>{student.stage}</span></td>
                       <td>
-                        <span className={`badge ${student.facultyApproved ? 'success' : 'warning'}`}>
-                          {student.facultyApproved ? 'Approved' : 'Pending'}
+                        <span className={approvalBadgeClass(student)}>
+                          {approvalLabel(student)}
                         </span>
                       </td>
                       <td>

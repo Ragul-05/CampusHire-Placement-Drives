@@ -27,6 +27,7 @@ type VerificationStats = {
   totalDepartmentStudents: number;
   pendingVerifications: number;
   verifiedStudents: number;
+  totalOffers?: number;
   eligibleForDrives: number;
   statusDistribution: { pending: number; verified: number; rejected: number };
   monthlyTrend: Array<{ month: string; verified: number }>;
@@ -165,7 +166,7 @@ export default function FacultyDashboard({ onNavigate }: { onNavigate?: (view: a
     { label: 'Total Students',        value: stats.totalDepartmentStudents, icon: <GraduationCap size={22} />, growth: 5.2,   gradient: 'linear-gradient(135deg,#667eea,#764ba2)', delay: 0    },
     { label: 'Pending Verifications', value: stats.pendingVerifications,    icon: <Clock size={22} />,         growth: -12.3, gradient: 'linear-gradient(135deg,#f59e0b,#d97706)', delay: 0.07 },
     { label: 'Verified Students',     value: stats.verifiedStudents,        icon: <CheckCircle2 size={22} />, growth: 18.5,  gradient: 'linear-gradient(135deg,#10b981,#059669)', delay: 0.14 },
-    { label: 'Eligible for Drives',   value: stats.eligibleForDrives,       icon: <UserCheck size={22} />,     growth: 22.1,  gradient: 'linear-gradient(135deg,#06b6d4,#0891b2)', delay: 0.21 },
+    { label: 'Total Offers',          value: stats.totalOffers ?? 0,        icon: <UserCheck size={22} />,     growth: 22.1,  gradient: 'linear-gradient(135deg,#06b6d4,#0891b2)', delay: 0.21 },
   ] : [];
 
   const pieData = stats ? [
@@ -273,7 +274,7 @@ export default function FacultyDashboard({ onNavigate }: { onNavigate?: (view: a
           {/* Line */}
           <div className="faculty-chart-card">
             <div className="faculty-card-header">
-              <div><h3 className="faculty-card-title">Monthly Verification Trend</h3><p className="faculty-card-sub">Last 6 months</p></div>
+              <div><h3 className="faculty-card-title">Monthly Offer Trend</h3><p className="faculty-card-sub">Offers issued in last 6 months</p></div>
               <span className="badge info">Trend</span>
             </div>
             <div className="faculty-chart-body">
@@ -284,7 +285,7 @@ export default function FacultyDashboard({ onNavigate }: { onNavigate?: (view: a
                     <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b' }} tickLine={false} axisLine={false} />
                     <YAxis tick={{ fontSize: 11, fill: '#64748b' }} tickLine={false} axisLine={false} />
                     <Tooltip contentStyle={{ borderRadius: 10, fontSize: 13 }} />
-                    <Line type="monotone" dataKey="verified" name="Verified" stroke="#10b981" strokeWidth={3}
+                    <Line type="monotone" dataKey="verified" name="Offers" stroke="#10b981" strokeWidth={3}
                       dot={{ r: 5, fill: '#10b981', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 7 }} />
                   </LineChart>
                 </ResponsiveContainer>

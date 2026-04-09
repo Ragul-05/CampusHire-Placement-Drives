@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Search, Download, ChevronDown, ChevronUp, Shield } from 'lucide-react';
 import '../styles/dashboard.css';
 import { facultyUrl, getJson } from '../utils/api';
@@ -191,9 +191,8 @@ export default function AuditLogs({ onNavigate }: { onNavigate?: (view: any) => 
                       </tr>
                     )}
                     {currentLogs.map(log => (
-                      <>
+                      <Fragment key={log.id}>
                         <tr
-                          key={log.id}
                           className={`audit-row ${expandedRow === log.id ? 'expanded' : ''}`}
                           onClick={() => setExpandedRow(expandedRow === log.id ? null : log.id)}
                         >
@@ -255,7 +254,7 @@ export default function AuditLogs({ onNavigate }: { onNavigate?: (view: any) => 
                             </td>
                           </tr>
                         )}
-                      </>
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>

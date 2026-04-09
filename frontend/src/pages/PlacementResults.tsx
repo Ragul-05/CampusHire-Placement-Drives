@@ -23,6 +23,8 @@ type PlacementStatusRow = {
   placementStatus: 'PLACED' | 'UNPLACED';
   companyName: string | null;
   ctc: number | null;
+  offeredCompanies?: string[];
+  offerCount?: number;
 };
 
 type CompanyRoundAnalysis = {
@@ -183,20 +185,27 @@ export default function PlacementResults({ onNavigate }: { onNavigate?: (view: s
 
   const companyOptions = useMemo(() => {
     const set = new Set<string>();
-    trackingRows.forEach((row) => {
+    statusRows.forEach((row) => {
       if (row.companyName && row.companyName.trim()) {
         set.add(row.companyName.trim());
       }
+      (row.offeredCompanies || []).forEach((company) => {
+        if (company && company.trim()) {
+          set.add(company.trim());
+        }
+      });
     });
     return ['ALL', ...Array.from(set).sort((a, b) => a.localeCompare(b))];
-  }, [trackingRows]);
+  }, [statusRows]);
 
   const filteredStatusRows = useMemo(() => {
     return statusRows.filter((row) => {
       const matchesPlacement = placementFilter === 'ALL' || row.placementStatus === placementFilter;
-      const normalizedCompany = row.companyName?.trim().toLowerCase() || '';
       const normalizedFilter = companyFilter.trim().toLowerCase();
-      const matchesCompany = companyFilter === 'ALL' || normalizedCompany === normalizedFilter;
+      const allCompanies = [row.companyName || '', ...(row.offeredCompanies || [])]
+        .map((company) => company.trim().toLowerCase())
+        .filter(Boolean);
+      const matchesCompany = companyFilter === 'ALL' || allCompanies.includes(normalizedFilter);
       return matchesPlacement && matchesCompany;
     });
   }, [statusRows, placementFilter, companyFilter]);
@@ -272,8 +281,14 @@ export default function PlacementResults({ onNavigate }: { onNavigate?: (view: s
   const companyPlacementData = useMemo(() => {
     const counts: Record<string, number> = {};
     statusRows.filter((row) => row.placementStatus === 'PLACED').forEach((row) => {
-      const key = row.companyName || 'Unknown';
-      counts[key] = (counts[key] || 0) + 1;
+      const companies = (row.offeredCompanies && row.offeredCompanies.length > 0)
+        ? row.offeredCompanies
+        : [row.companyName || 'Unknown'];
+
+      companies.forEach((company) => {
+        const key = company || 'Unknown';
+        counts[key] = (counts[key] || 0) + 1;
+      });
     });
 
     return Object.entries(counts)
@@ -703,7 +718,21 @@ export default function PlacementResults({ onNavigate }: { onNavigate?: (view: s
                             {row.placementStatus === 'PLACED' ? 'Placed' : 'Unplaced'}
                           </span>
                         </td>
-                        <td>{row.companyName || '—'}</td>
+                        <td>
+                          {row.placementStatus === 'PLACED' ? (
+                            <div>
+                              <div>{(row.offeredCompanies && row.offeredCompanies.length > 0)
+                                ? row.offeredCompanies.join(', ')
+                                : (row.companyName || '—')}
+                              </div>
+                              {!!row.offeredCompanies?.length && row.offeredCompanies.length > 1 && (
+                                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                                  {row.offeredCompanies.length} offers
+                                </div>
+                              )}
+                            </div>
+                          ) : '—'}
+                        </td>
                         <td>{row.ctc != null ? `₹${row.ctc.toFixed(2)}` : '—'}</td>
                       </tr>
                     ))}

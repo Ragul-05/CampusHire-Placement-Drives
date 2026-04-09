@@ -119,19 +119,25 @@ export default function PlacementHeadDashboard({ onNavigate }: { onNavigate?: (v
   const kpis: Kpi[] = useMemo(() => [
     { label: 'Total Students', value: stats.totalStudents ?? 0, icon: <Users size={18} />, growth: 0, color: 'linear-gradient(135deg,#2563eb,#1d4ed8)' },
     { label: 'Verified Profiles', value: stats.verifiedStudents ?? 0, icon: <CheckCircle2 size={18} />, growth: 0, color: 'linear-gradient(135deg,#10b981,#059669)' },
-    { label: 'Placed Students', value: stats.placedStudents ?? 0, icon: <Award size={18} />, growth: 0, color: 'linear-gradient(135deg,#f97316,#ea580c)' },
+    { label: 'Total Offers', value: stats.totalOffers ?? 0, icon: <Award size={18} />, growth: 0, color: 'linear-gradient(135deg,#f97316,#ea580c)' },
     { label: 'Active Drives', value: stats.ongoingDrives ?? 0, icon: <Briefcase size={18} />, growth: 0, color: 'linear-gradient(135deg,#7c3aed,#6d28d9)' }
   ], [stats]);
 
   const deptData = useMemo(() => {
-    if (!analytics.branchWisePlacements) return [];
-    return Object.entries(analytics.branchWisePlacements).map(([name, value]) => ({ name, value: value as number }));
-  }, [analytics.branchWisePlacements]);
+    const source = analytics.branchWiseOffers || analytics.branchWisePlacements;
+    if (!source) return [];
+    return Object.entries(source).map(([name, value]) => ({ name, value: value as number }));
+  }, [analytics.branchWiseOffers, analytics.branchWisePlacements]);
 
   const recruitersData = useMemo(() => {
     if (!analytics.topRecruiters) return [];
     return Object.entries(analytics.topRecruiters).map(([name, value]) => ({ name, value: value as number }));
   }, [analytics.topRecruiters]);
+
+  const offerTrendData = useMemo(() => {
+    if (!analytics.monthlyOfferTrend) return [];
+    return Object.entries(analytics.monthlyOfferTrend).map(([month, offers]) => ({ month, offers: offers as number }));
+  }, [analytics.monthlyOfferTrend]);
 
   const upcomingDrives = useMemo(() => drives.filter(d => d.status === 'UPCOMING' || d.status === 'ONGOING').slice(0, 6), [drives]);
   const highOfferDrives = useMemo(() => [...drives].sort((a, b) => b.ctcLpa - a.ctcLpa).slice(0, 6), [drives]);
@@ -166,7 +172,7 @@ export default function PlacementHeadDashboard({ onNavigate }: { onNavigate?: (v
           <div className="section-title">Analytics</div>
           <div className="charts-row">
             <div className={`card chart-card fade-in ${sk}`}>
-              <div className="chart-title">Students by Department</div>
+              <div className="chart-title">Offers by Department</div>
               <div className="chart-body">
                 {!loading && deptData.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>No department data yet</span>}
                 {!loading && deptData.length > 0 && (
@@ -208,9 +214,20 @@ export default function PlacementHeadDashboard({ onNavigate }: { onNavigate?: (v
         {/* ── Charts Row 2: trend full width ── */}
         <div className="charts-full">
           <div className={`card chart-card fade-in ${sk}`}>
-            <div className="chart-title">Monthly Placement Trend</div>
+            <div className="chart-title">Monthly Offer Trend</div>
             <div className="chart-body">
-              <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>No placement trend data yet</span>
+              {!loading && offerTrendData.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>No offer trend data yet</span>}
+              {!loading && offerTrendData.length > 0 && (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={offerTrendData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="month" tickLine={false} axisLine={false} />
+                    <YAxis tickLine={false} axisLine={false} allowDecimals={false} />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="offers" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
         </div>

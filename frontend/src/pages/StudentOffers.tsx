@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StudentLayout from '../components/StudentLayout';
-import { getJson } from '../utils/api';
+import { getJson, postJson } from '../utils/api';
 import { ROUTES } from '../utils/routes';
 
 /* ─────────────────────────────────────────────
@@ -17,6 +17,7 @@ interface StudentOfferDTO {
   ctcLpa: number | null;
   issuedAt: string;
   status: string;
+  accepted?: boolean;
   // placement summary
   isPlaced: boolean;
   isLocked: boolean;
@@ -65,7 +66,17 @@ function Confetti() {
 /* ─────────────────────────────────────────────
    OFFER CARD
 ───────────────────────────────────────────── */
-function OfferCard({ offer }: { offer: StudentOfferDTO }) {
+function OfferCard({
+  offer,
+  canAccept,
+  accepting,
+  onAccept,
+}: {
+  offer: StudentOfferDTO;
+  canAccept: boolean;
+  accepting: boolean;
+  onAccept: (offerId: number) => void;
+}) {
   const [revealed, setRevealed] = useState(false);
 
   return (
@@ -122,11 +133,12 @@ function OfferCard({ offer }: { offer: StudentOfferDTO }) {
         }}>
           <span style={{
             padding: '6px 16px', borderRadius: 99,
-            background: '#dcfce7', border: '1.5px solid #86efac',
-            fontSize: 12, fontWeight: 800, color: '#15803d',
+            background: offer.accepted ? '#dcfce7' : '#eff6ff',
+            border: offer.accepted ? '1.5px solid #86efac' : '1.5px solid #bfdbfe',
+            fontSize: 12, fontWeight: 800, color: offer.accepted ? '#15803d' : '#1d4ed8',
             display: 'flex', alignItems: 'center', gap: 6,
           }}>
-            🏆 Offer Received
+            {offer.accepted ? '✅ Offer Accepted' : '🏆 Offer Received'}
           </span>
           {offer.isLocked && (
             <span style={{
@@ -201,6 +213,27 @@ function OfferCard({ offer }: { offer: StudentOfferDTO }) {
           </div>
         )}
       </div>
+
+      {canAccept && !offer.accepted && (
+        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
+          <button
+            onClick={() => onAccept(offer.id)}
+            disabled={accepting}
+            style={{
+              background: accepting ? '#94a3b8' : 'linear-gradient(135deg, #059669, #16a34a)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 10,
+              padding: '9px 20px',
+              fontSize: 13,
+              fontWeight: 800,
+              cursor: accepting ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {accepting ? 'Accepting...' : 'Accept This Offer'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -385,6 +418,7 @@ export default function StudentOffers() {
   const [offers,  setOffers]  = useState<StudentOfferDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
+  const [acceptingOfferId, setAcceptingOfferId] = useState<number | null>(null);
 
   const loadOffers = useCallback(async () => {
     if (!email) { setLoading(false); return; }
@@ -403,6 +437,20 @@ export default function StudentOffers() {
   }, [email]);
 
   useEffect(() => { loadOffers(); }, [loadOffers]);
+
+  const acceptOffer = useCallback(async (offerId: number) => {
+    if (!email) return;
+    try {
+      setAcceptingOfferId(offerId);
+      await postJson<void>(`/api/student/offers/${offerId}/accept?email=${encodeURIComponent(email)}`, {});
+      await loadOffers();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to accept offer';
+      setError(msg);
+    } finally {
+      setAcceptingOfferId(null);
+    }
+  }, [email, loadOffers]);
 
   const isLocked  = offers.length > 0 && offers[0].isLocked;
   const isPlaced  = offers.length > 0 && offers[0].isPlaced;
@@ -434,7 +482,7 @@ export default function StudentOffers() {
           </h1>
           <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 14 }}>
             {isPlaced
-              ? 'Congratulations on your placement! Here are your received offers.'
+              ? 'Here are your received offers. If your profile is unlocked, you can accept one offer of your choice.'
               : 'Your placement offers will appear here once you are selected.'}
           </p>
         </div>
@@ -506,7 +554,12 @@ export default function StudentOffers() {
                   key={offer.id}
                   style={{ animationDelay: `${idx * 0.08}s`, animation: 'slideUp .4s ease both' }}
                 >
-                  <OfferCard offer={offer} />
+                  <OfferCard
+                    offer={offer}
+                    canAccept={!isLocked}
+                    accepting={acceptingOfferId === offer.id}
+                    onAccept={acceptOffer}
+                  />
                 </div>
               ))}
             </div>
@@ -519,8 +572,9 @@ export default function StudentOffers() {
               display: 'flex', alignItems: 'center', gap: 8,
             }}>
               <span style={{ fontSize: 16 }}>ℹ️</span>
-              Your profile is now locked and further applications have been disabled.
-              Contact your Placement Coordinator for any queries.
+              {isLocked
+                ? 'Profile is locked. Further drive participation is disabled until unlocked by admin.'
+                : 'Profile is unlocked. You can continue attending drives and choose any one offer to accept.'}
             </div>
           </>
         )}

@@ -23,4 +23,12 @@ public class StudentOfferController {
                 ApiResponse.success("Offers fetched successfully", studentOfferService.getMyOffers(email))
         );
     }
+
+    @PostMapping("/{offerId}/accept")
+    public ResponseEntity<ApiResponse<Void>> acceptOffer(
+            @PathVariable Long offerId,
+            @RequestParam String email) {
+        studentOfferService.acceptOffer(email, offerId);
+        return ResponseEntity.ok(ApiResponse.success("Offer accepted successfully", null));
+    }
 }

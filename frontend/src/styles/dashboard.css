@@ -1429,8 +1429,17 @@
   position: fixed;
   top: 20px;
   right: 20px;
+  bottom: auto;
+  left: auto;
+  width: auto;
+  max-width: min(360px, calc(100vw - 32px));
+  max-height: fit-content;
   z-index: 1000;
   animation: slideInRight 0.3s ease;
+}
+
+.toast.toast-notification {
+  bottom: auto;
 }
 
 @keyframes slideInRight {
@@ -1450,6 +1459,9 @@
   color: #fff;
   font-weight: 500;
   font-size: 13px;
+  line-height: 1.4;
+  display: inline-flex;
+  align-items: flex-start;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   max-width: 280px;
   word-wrap: break-word;
@@ -5873,7 +5885,6 @@ button:focus-visible,
   border-width: 1.5px;
   border-radius: 10px;
   padding: 8px 10px;
-  background: #fff;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
 }
 
@@ -5883,6 +5894,130 @@ button:focus-visible,
 
 .sm-stage-select-unified:focus {
   transform: translateY(-1px);
+}
+
+.sm-stage-select-unified.stage-select-eligible {
+  background: #eef2ff;
+  color: #3730a3;
+  border-color: #c7d2fe;
+}
+
+.sm-stage-select-unified.stage-select-assessment {
+  background: #ede9fe;
+  color: #5b21b6;
+  border-color: #ddd6fe;
+}
+
+.sm-stage-select-unified.stage-select-technical {
+  background: #ffedd5;
+  color: #9a3412;
+  border-color: #fed7aa;
+}
+
+.sm-stage-select-unified.stage-select-hr {
+  background: #cffafe;
+  color: #155e75;
+  border-color: #a5f3fc;
+}
+
+.sm-stage-select-unified.stage-select-selected {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #86efac;
+}
+
+.sm-stage-select-unified.stage-select-rejected {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+/* Drive Approvals: stage and approval-specific badges */
+.da-stage-badge,
+.da-approval-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+  min-width: 110px;
+  text-transform: uppercase;
+}
+
+.da-stage-eligible {
+  background: #eef2ff;
+  color: #3730a3;
+  border-color: #c7d2fe;
+}
+
+.da-stage-applied {
+  background: #e0f2fe;
+  color: #075985;
+  border-color: #bae6fd;
+}
+
+.da-stage-assessment {
+  background: #ede9fe;
+  color: #5b21b6;
+  border-color: #ddd6fe;
+}
+
+.da-stage-technical {
+  background: #ffedd5;
+  color: #9a3412;
+  border-color: #fed7aa;
+}
+
+.da-stage-hr {
+  background: #cffafe;
+  color: #155e75;
+  border-color: #a5f3fc;
+}
+
+.da-stage-selected {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #86efac;
+}
+
+.da-stage-rejected {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.da-stage-default {
+  background: #f1f5f9;
+  color: #334155;
+  border-color: #cbd5e1;
+}
+
+.da-approval-approved {
+  background: #d1fae5;
+  color: #065f46;
+  border-color: #6ee7b7;
+}
+
+.da-approval-selected {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #86efac;
+}
+
+.da-approval-rejected {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.da-approval-pending {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fcd34d;
 }
 
 .sm-stage-select {

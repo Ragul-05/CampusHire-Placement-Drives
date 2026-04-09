@@ -10,7 +10,6 @@ import DriveFiltering from './pages/DriveFiltering';
 import CompanyManagement from './pages/CompanyManagement';
 import DriveManagement from './pages/DriveManagement';
 import DriveEligibility from './pages/DriveEligibility';
-import Shortlisting from './pages/Shortlisting';
 import DriveApprovals from './pages/DriveApprovals';
 import OfferManagement from './pages/OfferManagement';
 import StudentManagement from './pages/StudentManagement';
@@ -43,7 +42,7 @@ const VIEW_TO_PATH: Record<string, string> = {
   companyManagement:   ROUTES.companyManagement,
   driveManagement:     ROUTES.driveManagement,
   driveEligibility:    ROUTES.driveEligibility,
-  shortlisting:        ROUTES.shortlisting,
+  shortlisting:        ROUTES.driveApprovals,
   driveApprovals:      ROUTES.driveApprovals,
   offerManagement:     ROUTES.offerManagement,
   studentManagement:   ROUTES.studentManagement,
@@ -156,7 +155,7 @@ function AppRoutes() {
       <Route path={ROUTES.companyManagement}  element={<RequireAdmin><CompanyManagement      onNavigate={goto} /></RequireAdmin>} />
       <Route path={ROUTES.driveManagement}    element={<RequireAdmin><DriveManagement        onNavigate={goto} /></RequireAdmin>} />
       <Route path={ROUTES.driveEligibility}   element={<RequireAdmin><DriveEligibility       onNavigate={goto} /></RequireAdmin>} />
-      <Route path={ROUTES.shortlisting}       element={<RequireAdmin><Shortlisting           onNavigate={goto} /></RequireAdmin>} />
+      <Route path={ROUTES.shortlisting}       element={<RequireAdmin><Navigate to={ROUTES.driveApprovals} replace /></RequireAdmin>} />
       <Route path={ROUTES.driveApprovals}     element={<RequireAdmin><DriveApprovals         onNavigate={goto} /></RequireAdmin>} />
       <Route path={ROUTES.offerManagement}    element={<RequireAdmin><OfferManagement        onNavigate={goto} /></RequireAdmin>} />
       <Route path={ROUTES.adminPlacementResults} element={<RequireAdmin><PlacementResults onNavigate={goto} /></RequireAdmin>} />

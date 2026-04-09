@@ -23,6 +23,7 @@ import {
   Cell,
   Legend,
   Line,
+  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,

@@ -1,6 +1,6 @@
 import { ReactNode, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Bell, ChevronRight, LineChart as LineIcon, Search, Users, Briefcase, Building2, CheckSquare, ListChecks, Award, BarChart3, Megaphone, Shield } from 'lucide-react';
+import { Bell, ChevronRight, LineChart as LineIcon, Search, Users, Briefcase, Building2, CheckSquare, Award, BarChart3, Megaphone, Shield } from 'lucide-react';
 import '../styles/dashboard.css';
 import { ProfileDropdown, ViewProfileModal, EditProfileModal, useAdminProfile } from './AdminProfile';
 import { ROUTES } from '../utils/routes';
@@ -26,7 +26,6 @@ export default function AdminLayout({ children, activeNav, onNavigate }: Props) 
     { key: 'companies',    label: 'Companies',      icon: <Building2 size={16} />,   path: ROUTES.companyManagement  },
     { key: 'drives',       label: 'Drives',         icon: <Briefcase size={16} />,   path: ROUTES.driveManagement    },
     { key: 'eligibility',  label: 'Eligibility',    icon: <CheckSquare size={16} />, path: ROUTES.driveEligibility   },
-    { key: 'shortlisting', label: 'Shortlisting',   icon: <ListChecks size={16} />,  path: ROUTES.shortlisting       },
     { key: 'approvals',    label: 'Drive Approvals',icon: <CheckSquare size={16} />, path: ROUTES.driveApprovals     },
     { key: 'offers',       label: 'Offers',         icon: <Award size={16} />,       path: ROUTES.offerManagement    },
     { key: 'placementResults', label: 'Placement Results', icon: <BarChart3 size={16} />, path: ROUTES.adminPlacementResults },

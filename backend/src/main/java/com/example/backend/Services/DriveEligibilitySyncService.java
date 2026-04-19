@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class DriveEligibilitySyncService {
@@ -67,13 +66,23 @@ public class DriveEligibilitySyncService {
     }
 
     private void syncSingleMapping(StudentProfile profile, PlacementDrive drive) {
-        Optional<DriveApplication> existingOpt = driveApplicationRepository.findByStudentProfileIdAndDriveId(profile.getId(), drive.getId());
+        List<DriveApplication> existingRecords = driveApplicationRepository
+                .findByStudentProfileIdAndDriveIdOrderByIdAsc(profile.getId(), drive.getId());
+
+        DriveApplication existing = existingRecords.isEmpty() ? null : existingRecords.get(0);
+
+        // Clean duplicate mappings defensively; keep the oldest canonical one.
+        if (existingRecords.size() > 1) {
+            for (int i = 1; i < existingRecords.size(); i++) {
+                driveApplicationRepository.delete(existingRecords.get(i));
+            }
+        }
 
         // Locked profiles must not attend/apply to additional drives.
         // Clean up only auto-eligible placeholders while preserving progressed records.
         if (Boolean.TRUE.equals(profile.getIsLocked())) {
-            if (existingOpt.isPresent() && existingOpt.get().getStage() == ApplicationStage.ELIGIBLE) {
-                driveApplicationRepository.delete(existingOpt.get());
+            if (existing != null && existing.getStage() == ApplicationStage.ELIGIBLE) {
+                driveApplicationRepository.delete(existing);
             }
             return;
         }
@@ -85,8 +94,7 @@ public class DriveEligibilitySyncService {
         boolean eligible = placementEligibilityService.evaluate(profile, drive).isEligible();
 
         if (eligible) {
-            if (existingOpt.isPresent()) {
-                DriveApplication existing = existingOpt.get();
+            if (existing != null) {
                 if (existing.getStage() == null) {
                     existing.setStage(ApplicationStage.ELIGIBLE);
                 }
@@ -111,8 +119,8 @@ public class DriveEligibilitySyncService {
             return;
         }
 
-        if (existingOpt.isPresent() && existingOpt.get().getStage() == ApplicationStage.ELIGIBLE) {
-            driveApplicationRepository.delete(existingOpt.get());
+        if (existing != null && existing.getStage() == ApplicationStage.ELIGIBLE) {
+            driveApplicationRepository.delete(existing);
         }
     }
 }

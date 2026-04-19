@@ -8,6 +8,8 @@ import com.example.backend.Models.DriveApplication;
 import com.example.backend.Models.StudentProfile;
 import com.example.backend.Repositories.DriveApplicationRepository;
 import com.example.backend.Repositories.StudentProfileRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +18,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class DriveApplicationService {
+
+    private static final Logger logger = LoggerFactory.getLogger(DriveApplicationService.class);
 
     @Autowired
     private DriveApplicationRepository applicationRepository;
@@ -34,7 +38,12 @@ public class DriveApplicationService {
         StudentProfile profile = profileRepository.findByUserEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Profile not found"));
 
-        driveEligibilitySyncService.syncEligibleMappingsForStudent(profile);
+        try {
+            driveEligibilitySyncService.syncEligibleMappingsForStudent(profile);
+        } catch (RuntimeException ex) {
+            logger.warn("Eligibility sync failed for studentProfileId={}. Returning existing applications only. Cause: {}",
+                    profile.getId(), ex.getMessage());
+        }
 
         List<DriveApplication> applications = applicationRepository.findByStudentProfileId(profile.getId());
 

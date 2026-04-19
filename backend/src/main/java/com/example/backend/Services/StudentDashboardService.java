@@ -5,6 +5,8 @@ import com.example.backend.Repositories.CompanyRepository;
 import com.example.backend.Repositories.DriveApplicationRepository;
 import com.example.backend.Repositories.PlacementDriveRepository;
 import com.example.backend.Repositories.StudentProfileRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +16,8 @@ import java.util.Map;
 
 @Service
 public class StudentDashboardService {
+
+        private static final Logger logger = LoggerFactory.getLogger(StudentDashboardService.class);
 
     @Autowired
     private StudentProfileRepository studentProfileRepository;
@@ -39,7 +43,12 @@ public class StudentDashboardService {
         com.example.backend.Models.StudentProfile profile = studentProfileRepository.findByUserEmail(email)
                 .orElseThrow(() -> new com.example.backend.Exceptions.ResourceNotFoundException("Student not found"));
 
-        driveEligibilitySyncService.syncEligibleMappingsForStudent(profile);
+                try {
+                        driveEligibilitySyncService.syncEligibleMappingsForStudent(profile);
+                } catch (RuntimeException ex) {
+                        logger.warn("Eligibility sync failed for studentProfileId={}. Continuing dashboard with existing data. Cause: {}",
+                                        profile.getId(), ex.getMessage());
+                }
 
         long totalDrives = driveRepository.countByStatusIn(
                 java.util.List.of(com.example.backend.Models.enums.DriveStatus.ONGOING, 

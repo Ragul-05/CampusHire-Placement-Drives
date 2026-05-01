@@ -7,7 +7,7 @@ import { ROUTES } from '../utils/routes';
 
 type Props = {
   children: ReactNode;
-  activeNav?: 'overview' | 'drives' | 'companies' | 'students' | 'eligibility' | 'shortlisting' | 'approvals' | 'offers' | 'placementResults' | 'analytics' | 'alerts' | 'reports';
+  activeNav?: 'overview' | 'drives' | 'companies' | 'students' | 'eligibility' | 'shortlisting' | 'approvals' | 'offers' | 'offerFilters' | 'placementResults' | 'analytics' | 'alerts' | 'reports';
   onNavigate?: (view: any) => void;
 };
 
@@ -28,6 +28,7 @@ export default function AdminLayout({ children, activeNav, onNavigate }: Props) 
     { key: 'eligibility',  label: 'Eligibility',    icon: <CheckSquare size={16} />, path: ROUTES.driveEligibility   },
     { key: 'approvals',    label: 'Drive Approvals',icon: <CheckSquare size={16} />, path: ROUTES.driveApprovals     },
     { key: 'offers',       label: 'Offers',         icon: <Award size={16} />,       path: ROUTES.offerManagement    },
+    { key: 'offerFilters', label: 'Offer Filters',  icon: <BarChart3 size={16} />,   path: ROUTES.adminOfferFilters  },
     { key: 'placementResults', label: 'Placement Results', icon: <BarChart3 size={16} />, path: ROUTES.adminPlacementResults },
     { key: 'students',     label: 'Students',       icon: <Users size={16} />,       path: ROUTES.studentManagement  },
     { key: 'analytics',    label: 'Analytics',      icon: <BarChart3 size={16} />,   path: ROUTES.analytics          },

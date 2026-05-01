@@ -12,6 +12,7 @@ import DriveManagement from './pages/DriveManagement';
 import DriveEligibility from './pages/DriveEligibility';
 import DriveApprovals from './pages/DriveApprovals';
 import OfferManagement from './pages/OfferManagement';
+import OfferFilterPage from './pages/OfferFilterPage';
 import StudentManagement from './pages/StudentManagement';
 import Analytics from './pages/Analytics';
 import Announcements from './pages/Announcements';
@@ -45,6 +46,7 @@ const VIEW_TO_PATH: Record<string, string> = {
   shortlisting:        ROUTES.driveApprovals,
   driveApprovals:      ROUTES.driveApprovals,
   offerManagement:     ROUTES.offerManagement,
+  adminOfferFilters:   ROUTES.adminOfferFilters,
   studentManagement:   ROUTES.studentManagement,
   analytics:           ROUTES.analytics,
   announcements:       ROUTES.announcements,
@@ -54,6 +56,7 @@ const VIEW_TO_PATH: Record<string, string> = {
   departmentDrives:    ROUTES.departmentDrives,
   driveFiltering:      ROUTES.driveFiltering,
   stageManagement:     ROUTES.stageManagement,
+  facultyOfferFilters: ROUTES.facultyOfferFilters,
   adminPlacementResults: ROUTES.adminPlacementResults,
   facultyPlacementResults: ROUTES.facultyPlacementResults,
 };
@@ -142,6 +145,7 @@ function AppRoutes() {
       <Route path={ROUTES.studentVerification} element={<RequireFaculty><StudentVerification onNavigate={goto} /></RequireFaculty>} />
       <Route path={ROUTES.driveFiltering}      element={<RequireFaculty><DriveFiltering      onNavigate={goto} /></RequireFaculty>} />
       <Route path={ROUTES.stageManagement}     element={<RequireFaculty><StageManagement     onNavigate={goto} /></RequireFaculty>} />
+      <Route path={ROUTES.facultyOfferFilters} element={<RequireFaculty><OfferFilterPage      onNavigate={goto} /></RequireFaculty>} />
       <Route path={ROUTES.facultyPlacementResults} element={<RequireFaculty><PlacementResults onNavigate={goto} /></RequireFaculty>} />
 
       {/* ── Shared faculty+admin routes ── */}
@@ -158,6 +162,7 @@ function AppRoutes() {
       <Route path={ROUTES.shortlisting}       element={<RequireAdmin><Navigate to={ROUTES.driveApprovals} replace /></RequireAdmin>} />
       <Route path={ROUTES.driveApprovals}     element={<RequireAdmin><DriveApprovals         onNavigate={goto} /></RequireAdmin>} />
       <Route path={ROUTES.offerManagement}    element={<RequireAdmin><OfferManagement        onNavigate={goto} /></RequireAdmin>} />
+      <Route path={ROUTES.adminOfferFilters}  element={<RequireAdmin><OfferFilterPage        onNavigate={goto} /></RequireAdmin>} />
       <Route path={ROUTES.adminPlacementResults} element={<RequireAdmin><PlacementResults onNavigate={goto} /></RequireAdmin>} />
 
       {/* ── Catch-all: 404 (NOT redirect to home) ── */}

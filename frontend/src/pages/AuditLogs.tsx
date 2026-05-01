@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Search, Download, ChevronDown, ChevronUp, Shield } from 'lucide-react';
 import '../styles/dashboard.css';
 import { facultyUrl, getJson } from '../utils/api';
@@ -31,10 +31,12 @@ type AuditLogApi = {
 
 export default function AuditLogs({ onNavigate }: { onNavigate?: (view: any) => void }) {
   const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [filteredLogs, setFilteredLogs] = useState<AuditLog[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [actionFilter, setActionFilter] = useState('ALL');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
 
   // Pagination
@@ -44,10 +46,6 @@ export default function AuditLogs({ onNavigate }: { onNavigate?: (view: any) => 
   useEffect(() => {
     loadLogs();
   }, []);
-
-  useEffect(() => {
-    applyFilters();
-  }, [logs, searchTerm]);
 
   async function loadLogs() {
     try {
@@ -75,20 +73,33 @@ export default function AuditLogs({ onNavigate }: { onNavigate?: (view: any) => 
     }
   }
 
-  function applyFilters() {
-    let filtered = [...logs];
+  const filteredLogs = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    const fromDate = dateFrom ? new Date(`${dateFrom}T00:00:00`) : null;
+    const toDate = dateTo ? new Date(`${dateTo}T23:59:59.999`) : null;
 
-    if (searchTerm) {
-      filtered = filtered.filter(log =>
-        log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.userEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.targetEntity.toLowerCase().includes(searchTerm.toLowerCase())
+    return logs.filter((log) => {
+      const action = log.action.toLowerCase();
+      const userEmail = log.userEmail.toLowerCase();
+      const targetEntity = log.targetEntity.toLowerCase();
+      const timestamp = new Date(log.timestamp);
+
+      const matchesSearch = !normalizedSearch || (
+        action.includes(normalizedSearch) ||
+        userEmail.includes(normalizedSearch) ||
+        targetEntity.includes(normalizedSearch)
       );
-    }
+      const matchesAction = actionFilter === 'ALL' || action.includes(actionFilter.toLowerCase());
+      const matchesFromDate = !fromDate || timestamp >= fromDate;
+      const matchesToDate = !toDate || timestamp <= toDate;
 
-    setFilteredLogs(filtered);
+      return matchesSearch && matchesAction && matchesFromDate && matchesToDate;
+    });
+  }, [logs, searchTerm, actionFilter, dateFrom, dateTo]);
+
+  useEffect(() => {
     setCurrentPage(1);
-  }
+  }, [searchTerm, actionFilter, dateFrom, dateTo]);
 
   function getActionBadgeClass(action: string): string {
     if (action.includes('CREATE') || action.includes('ADD')) return 'success';
@@ -119,6 +130,24 @@ export default function AuditLogs({ onNavigate }: { onNavigate?: (view: any) => 
     a.click();
     window.URL.revokeObjectURL(url);
   }
+
+  function clearFilters() {
+    setSearchTerm('');
+    setActionFilter('ALL');
+    setDateFrom('');
+    setDateTo('');
+  }
+
+  const actionOptions = useMemo(() => {
+    const options = new Set<string>();
+    logs.forEach((log) => {
+      const normalized = log.action.trim();
+      if (normalized) {
+        options.add(normalized);
+      }
+    });
+    return ['ALL', ...Array.from(options).sort((a, b) => a.localeCompare(b))];
+  }, [logs]);
 
   // Pagination
   const indexOfLastLog = currentPage * logsPerPage;
@@ -160,6 +189,34 @@ export default function AuditLogs({ onNavigate }: { onNavigate?: (view: any) => 
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
+                <div className="input-group" style={{ minWidth: 220 }}>
+                  <select value={actionFilter} onChange={(e) => setActionFilter(e.target.value)}>
+                    {actionOptions.map((action) => (
+                      <option key={action} value={action}>
+                        {action === 'ALL' ? 'All Actions' : action}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="input-group" style={{ minWidth: 180 }}>
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    aria-label="Filter logs from date"
+                  />
+                </div>
+                <div className="input-group" style={{ minWidth: 180 }}>
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    aria-label="Filter logs to date"
+                  />
+                </div>
+                <button className="btn-secondary" type="button" onClick={clearFilters}>
+                  Clear Filters
+                </button>
                 <div className="audit-count">
                   <Shield size={16} />
                   <span>{filteredLogs.length} logs found</span>

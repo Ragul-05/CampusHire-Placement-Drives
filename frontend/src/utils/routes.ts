@@ -23,6 +23,7 @@ export const ROUTES = {
   shortlisting:         '/admin/shortlisting',
   driveApprovals:       '/admin/drive-approvals',
   offerManagement:      '/admin/offers',
+  adminOfferFilters:    '/admin/offer-filters',
   adminPlacementResults: '/admin/placement-results',
   studentManagement:    '/admin/students',
   analytics:            '/admin/analytics',
@@ -34,6 +35,7 @@ export const ROUTES = {
   departmentDrives:     '/faculty/department-drives',
   driveFiltering:       '/faculty/drive-filtering',
   stageManagement:      '/faculty/stage-management',
+  facultyOfferFilters:  '/faculty/offer-filters',
   facultyPlacementResults: '/faculty/placement-results',
 } as const;
 

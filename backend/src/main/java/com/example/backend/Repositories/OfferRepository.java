@@ -34,6 +34,31 @@ public interface OfferRepository extends JpaRepository<Offer, Long> {
     long countByStudentProfileUserDepartmentId(Long departmentId);
 
     List<Offer> findByStudentProfileUserDepartmentIdOrderByIssuedAtDesc(Long departmentId);
+
+    @Query(value = """
+            SELECT
+                sp.id AS student_id,
+                COALESCE(NULLIF(TRIM(CONCAT_WS(' ', p.first_name, p.last_name)), ''), u.email) AS student_name,
+                d.name AS department_name,
+                d.id AS department_id,
+                COUNT(o.id) AS offer_count,
+                STRING_AGG(c.name, ', ' ORDER BY o.issued_at DESC) AS company_names,
+                STRING_AGG(COALESCE(o.ctc::text, 'N/A'), ', ' ORDER BY o.issued_at DESC) AS packages
+            FROM offers o
+            JOIN student_profiles sp ON sp.id = o.student_id
+            JOIN users u ON u.id = sp.user_id
+            LEFT JOIN departments d ON d.id = u.department_id
+            LEFT JOIN placement_drives pd ON pd.id = o.drive_id
+            LEFT JOIN companies c ON c.id = pd.company_id
+            LEFT JOIN student_personal_details p ON p.student_id = sp.id
+            WHERE (:departmentId IS NULL OR u.department_id = :departmentId)
+            GROUP BY sp.id, p.first_name, p.last_name, u.email, d.name, d.id
+            HAVING (:offerFilter = 'ALL' OR (:offerFilter = 'SINGLE' AND COUNT(o.id) = 1) OR (:offerFilter = 'MULTIPLE' AND COUNT(o.id) >= 2))
+            ORDER BY COALESCE(NULLIF(TRIM(CONCAT_WS(' ', p.first_name, p.last_name)), ''), u.email)
+            """, nativeQuery = true)
+    List<Object[]> findOfferFilterRows(
+            @Param("departmentId") Long departmentId,
+            @Param("offerFilter") String offerFilter);
 }
 
 

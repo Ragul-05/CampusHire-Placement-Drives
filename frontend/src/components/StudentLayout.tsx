@@ -6,7 +6,6 @@ import {
   GraduationCap, Award, Megaphone
 } from 'lucide-react';
 import { ROUTES } from '../utils/routes';
-import ChatbotWidget from './ChatbotWidget';
 
 type Props = {
   children: ReactNode;
@@ -115,8 +114,6 @@ export default function StudentLayout({ children }: Props) {
           {children}
         </div>
       </div>
-
-      <ChatbotWidget />
     </div>
   );
 }

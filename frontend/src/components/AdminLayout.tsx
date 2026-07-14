@@ -4,6 +4,7 @@ import { Bell, ChevronRight, LineChart as LineIcon, Search, Users, Briefcase, Bu
 import '../styles/dashboard.css';
 import { ProfileDropdown, ViewProfileModal, EditProfileModal, useAdminProfile } from './AdminProfile';
 import { ROUTES } from '../utils/routes';
+import ChatbotWidget from './ChatbotWidget';
 
 type Props = {
   children: ReactNode;
@@ -114,6 +115,8 @@ export default function AdminLayout({ children, activeNav, onNavigate }: Props) 
           </div>
         </div>
       )}
+
+      <ChatbotWidget />
     </div>
   );
 }

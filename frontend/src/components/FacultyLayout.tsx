@@ -7,6 +7,7 @@ import {
 import '../styles/dashboard.css';
 import { ProfileDropdown, ViewProfileModal, EditProfileModal, useAdminProfile } from './AdminProfile';
 import { ROUTES } from '../utils/routes';
+import ChatbotWidget from './ChatbotWidget';
 
 type Props = {
   children: ReactNode;
@@ -131,6 +132,8 @@ export default function FacultyLayout({ children, activeNav, onNavigate }: Props
           </div>
         </div>
       )}
+
+      <ChatbotWidget />
     </div>
   );
 }
